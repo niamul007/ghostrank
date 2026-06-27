@@ -13,17 +13,17 @@ export async function register(
   try {
     const { name, email, password } = req.body
 
-    const existing = await prisma.user.findUnique({ where: { email } })
+    const existing = await prisma.agency.findUnique({ where: { email } })
     if (existing) return next(new AppError("Email already in use", 409))
 
     const hashed = await bcrypt.hash(password, 10)
-    const user = await prisma.user.create({
+    const agency = await prisma.agency.create({
       data: { name, email, password: hashed },
     })
 
-    const { password: _, ...userWithoutPassword } = user
+    const { password: _, ...agencyWithoutPassword } = agency
 
-    res.status(201).json({ status: "success", data: { user: userWithoutPassword } })
+    res.status(201).json({ status: "success", data: { agency: agencyWithoutPassword } })
   } catch (err) {
     next(err)
   }
@@ -37,13 +37,13 @@ export async function login(
   try {
     const { email, password } = req.body
 
-    const user = await prisma.user.findUnique({ where: { email } })
-    if (!user) return next(new AppError("Invalid credentials", 401))
+    const agency = await prisma.agency.findUnique({ where: { email } })
+    if (!agency) return next(new AppError("Invalid credentials", 401))
 
-    const match = await bcrypt.compare(password, user.password)
+    const match = await bcrypt.compare(password, agency.password)
     if (!match) return next(new AppError("Invalid credentials", 401))
 
-    const token = generateAccessToken({ userId: user.id, role: user.role })
+    const token = generateAccessToken({ agencyId: agency.id, role: agency.role })
 
     res.status(200).json({ status: "success", data: { accessToken: token } })
   } catch (err) {

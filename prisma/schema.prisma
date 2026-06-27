@@ -1,3 +1,16 @@
+// ──────────────────────────────────────────
+// GhostRank — Database Schema
+// ──────────────────────────────────────────
+// This is the Prisma schema that generates your database tables.
+// Every model here becomes a table in PostgreSQL.
+//
+// Key design decisions:
+// - cuid() for IDs: URL-safe, sortable, no sequential guessing
+// - Cascade deletes: delete a client → their scans/results/reports go too
+// - niche and location are REQUIRED on Client (the scanner needs them)
+// - updatedAt on Scan so we know when status last changed
+// - Indexes on foreign keys for faster queries
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,6 +19,10 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ──────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────
 
 enum Role {
   AGENCY
@@ -19,6 +36,12 @@ enum ScanStatus {
   FAILED
 }
 
+// ──────────────────────────────────────────
+// Models
+// ──────────────────────────────────────────
+
+/// The agency that signs up and uses GhostRank.
+/// One agency can have many clients they monitor.
 model Agency {
   id          String   @id @default(cuid())
   name        String
@@ -28,50 +51,70 @@ model Agency {
   brandColors Json?
   role        Role     @default(AGENCY)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   clients Client[]
 }
 
+/// A business the agency is monitoring for AI visibility.
+/// niche and location are required — they drive the scan prompts.
 model Client {
   id           String   @id @default(cuid())
   agencyId     String
   businessName String
-  niche        String?
-  location     String?
+  niche        String   // Required: "dentist", "restaurant", "plumber", etc.
+  location     String   // Required: "Miami, FL", "London, UK", etc.
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  agency  Agency   @relation(fields: [agencyId], references: [id])
+  agency  Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   scans   Scan[]
   reports Report[]
+
+  @@index([agencyId])
 }
 
+/// A single scan run for a client.
+/// Goes through statuses: PENDING → RUNNING → COMPLETED (or FAILED)
 model Scan {
   id          String     @id @default(cuid())
   clientId    String
   status      ScanStatus @default(PENDING)
-  rawResults  Json?
   score       Float?
-  promptsUsed Json?
+  promptsUsed Json?      // Stores the actual prompts sent (for debugging/transparency)
+  rawResults  Json?      // Full raw AI responses (for debugging)
+  errorMsg    String?    // If status=FAILED, why it failed
   createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  client      Client       @relation(fields: [clientId], references: [id])
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   scanResults ScanResult[]
   reports     Report[]
+
+  @@index([clientId])
+  @@index([status])
 }
 
+/// Individual result from one prompt on one platform.
+/// A scan with 5 prompts × 3 platforms = 15 ScanResult rows.
 model ScanResult {
   id        String  @id @default(cuid())
   scanId    String
-  platform  String
+  platform  String  // "chatgpt" | "perplexity" | "gemini"
   prompt    String
-  response  String
+  category  String  // "direct" | "comparison" | "discovery" | "specific"
+  response  String  // Full AI response text
   mentioned Boolean @default(false)
-  position  Int?
-  sentiment String?
+  position  Int?    // Position in recommendation list (1 = first)
+  sentiment String? // "positive" | "neutral" | "negative"
 
-  scan Scan @relation(fields: [scanId], references: [id])
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
 }
 
+/// Generated report for a scan — PDF and/or web link.
+/// White-labeled with the agency's branding.
 model Report {
   id        String   @id @default(cuid())
   scanId    String
@@ -80,6 +123,9 @@ model Report {
   webUrl    String?
   createdAt DateTime @default(now())
 
-  scan   Scan   @relation(fields: [scanId], references: [id])
-  client Client @relation(fields: [clientId], references: [id])
+  scan   Scan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([clientId])
 }

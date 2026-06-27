@@ -1,0 +1,102 @@
+# docker-compose.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# Docker Compose lets you define and run multi-container applications using a
+# single YAML file. Instead of typing long `docker run` commands every time,
+# you describe what you want here and Compose handles it.
+#
+# Run everything with: docker compose up -d
+# Stop everything with: docker compose down
+# Wipe ALL data:        docker compose down -v
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The version of the Compose file format.
+# "3.8" is widely supported and compatible with Docker Desktop on Windows.
+version: "3.8"
+
+# "services" is where you list each container you want to run.
+# Think of a service as one running program (here, our Postgres database).
+services:
+
+  # We're naming this service "db". You can name it anything.
+  # This name is also the hostname other containers use to reach it
+  # (e.g. a backend container in the same Compose file would connect
+  # to host "db" instead of "localhost").
+  db:
+
+    # "image" tells Docker which pre-built image to use.
+    # "postgres:16-alpine" means:
+    #   - postgres  → the official PostgreSQL image from Docker Hub
+    #   - 16        → PostgreSQL version 16
+    #   - alpine    → based on Alpine Linux, a tiny (~5 MB) distro
+    #                 that makes the final image much smaller than
+    #                 the default Debian-based image (~350 MB vs ~80 MB)
+    image: postgres:16-alpine
+
+    # "restart: unless-stopped" means Docker will automatically restart
+    # this container if it crashes OR if Docker Desktop itself restarts
+    # (e.g. after a reboot). It won't restart only if YOU manually stop it.
+    restart: unless-stopped
+
+    # "environment" sets environment variables inside the container.
+    # The official postgres image reads these on first startup to create
+    # the database user and initial database automatically.
+    environment:
+      POSTGRES_USER: postgres       # The superuser username for Postgres
+      POSTGRES_PASSWORD: postgres   # The superuser password
+      POSTGRES_DB: mydb             # The default database to create on init
+
+    # "ports" maps a port on your Windows host to a port inside the container.
+    # Format is "HOST_PORT:CONTAINER_PORT".
+    # Postgres listens on port 5432 inside the container.
+    # We map it to 5432 on localhost so our Node app (and tools like TablePlus)
+    # can connect with: postgresql://postgres:postgres@localhost:5432/mydb
+    #
+    # KEY INSIGHT: Your network blocks port 5432 for outbound connections to
+    # the internet. But this maps to 127.0.0.1 (your own machine) — that's a
+    # loopback connection, never leaving your computer. The firewall rule
+    # doesn't apply here.
+    ports:
+      - "5432:5432"
+
+    # "volumes" attaches storage to the container.
+    # By default, anything written inside a container is lost when it stops.
+    # Volumes are the solution: they store data OUTSIDE the container on your
+    # host machine, so it survives restarts and even image upgrades.
+    #
+    # "postgres_data:/var/lib/postgresql/data" means:
+    #   - postgres_data → a named volume managed by Docker (defined below)
+    #   - /var/lib/postgresql/data → where Postgres stores its data files
+    #                                inside the container
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # "healthcheck" lets Docker know when the container is ACTUALLY ready
+    # to accept connections — not just "started", but "responding".
+    # Without this, if another service depends on "db", it might try to
+    # connect before Postgres has finished initializing and fail.
+    healthcheck:
+      # pg_isready is a Postgres utility that tests if the server is
+      # accepting connections. -U postgres tells it which user to check with.
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+
+      # How often to run the check. "5s" = every 5 seconds.
+      interval: 5s
+
+      # How long to wait for the check command before calling it a failure.
+      timeout: 5s
+
+      # How many consecutive failures before marking the container "unhealthy".
+      retries: 5
+
+# "volumes" at the top level declares the named volumes used above.
+# Docker manages where on your host filesystem this data actually lives
+# (usually under C:\Users\<you>\AppData\Local\Docker\... on Windows).
+# You don't need to know the exact path — Docker handles it.
+#
+# Named volumes persist across `docker compose down`. They are only deleted
+# when you run `docker compose down -v` (the -v flag = remove volumes).
+volumes:
+  postgres_data:
+    # "driver: local" means store the data on the local machine's filesystem.
+    # This is the default, but being explicit is good practice.
+    driver: local

@@ -1,0 +1,23 @@
+# .dockerignore — tells Docker what to EXCLUDE from the build context.
+#
+# When you run "docker build", Docker sends all project files to the Docker
+# daemon as a "build context". Large or irrelevant files slow this down.
+# .dockerignore works exactly like .gitignore but for Docker builds.
+
+# Dependencies are installed fresh inside the container via npm ci.
+# Including them would add hundreds of MB and override the clean install.
+node_modules
+
+# Never bake secrets into an image. The container reads DATABASE_URL and
+# ACCESS_TOKEN_SECRET from environment variables at runtime instead.
+.env
+
+# The compiled output is generated fresh inside the builder stage.
+# Including it would waste transfer time and might be stale/wrong platform.
+dist
+
+# Git history has no value inside a container and can be large.
+.git
+
+# docker-compose.yml is for local orchestration, not needed inside the image.
+docker-compose.yml

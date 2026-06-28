@@ -20,12 +20,14 @@
   },
   "homepage": "https://github.com/niamul007/backend-starter#readme",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "openai": "^6.45.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

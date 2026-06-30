@@ -11,8 +11,7 @@
 // We have to be smart about how we search.
 
 import type { AIResponse, ParsedScanResult, Platform, PromptCategory, SentimentLabel } from "../types"
-import type { BuiltPrompt } from "./promptBuilder"
-
+import type { BuiltPrompt, ScanJobPayload } from "../types"
 // ──────────────────────────────────────────
 // Mention Detection
 // ──────────────────────────────────────────

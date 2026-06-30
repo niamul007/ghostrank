@@ -4,19 +4,96 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
-  USER
+  AGENCY
   ADMIN
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(USER)
+enum ScanStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model Agency {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  password    String
+  logo        String?
+  brandColors Json?
+  role        Role     @default(AGENCY)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clients Client[]
+}
+
+model Client {
+  id           String   @id @default(cuid())
+  agencyId     String
+  businessName String
+  niche        String
+  location     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  agency  Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  scans   Scan[]
+  reports Report[]
+
+  @@index([agencyId])
+}
+
+model Scan {
+  id          String     @id @default(cuid())
+  clientId    String
+  status      ScanStatus @default(PENDING)
+  score       Float?
+  promptsUsed Json?
+  rawResults  Json?
+  errorMsg    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  scanResults ScanResult[]
+  reports     Report[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model ScanResult {
+  id        String  @id @default(cuid())
+  scanId    String
+  platform  String
+  prompt    String
+  category  String
+  response  String
+  mentioned Boolean @default(false)
+  position  Int?
+  sentiment String?
+
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  scanId    String
+  clientId  String
+  pdfUrl    String?
+  webUrl    String?
   createdAt DateTime @default(now())
+
+  scan   Scan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([clientId])
 }

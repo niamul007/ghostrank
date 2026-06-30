@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────
 
 import { Router } from "express"
+import { authenticate } from "../middleware/auth"
 import {
   createClient,
   listClients,
@@ -12,6 +13,8 @@ import {
 } from "../controllers/client.controller"
 
 const router = Router()
+
+router.use(authenticate)
 
 router.post("/", createClient)
 router.get("/", listClients)

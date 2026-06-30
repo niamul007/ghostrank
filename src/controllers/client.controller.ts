@@ -24,7 +24,7 @@ export async function createClient(
 ): Promise<void> {
   try {
     const { businessName, niche, location } = req.body
-    const agencyId = (req as any).agencyId
+    const agencyId = req.user!.agencyId
 
     if (!businessName || !niche || !location) {
       res.status(400).json({
@@ -65,7 +65,7 @@ export async function listClients(
   next: NextFunction
 ): Promise<void> {
   try {
-    const agencyId = (req as any).agencyId
+    const agencyId = req.user!.agencyId
 
     const clients = await prisma.client.findMany({
       where: { agencyId },
@@ -105,7 +105,7 @@ export async function getClient(
 ): Promise<void> {
   try {
     const id = req.params.id as string
-    const agencyId = (req as any).agencyId
+    const agencyId = req.user!.agencyId
 
     const client = await prisma.client.findFirst({
       where: { id, agencyId },
@@ -151,7 +151,7 @@ export async function updateClient(
 ): Promise<void> {
   try {
     const id = req.params.id as string
-    const agencyId = (req as any).agencyId
+    const agencyId = req.user!.agencyId
     const { businessName, niche, location } = req.body
 
     // Verify ownership
@@ -197,7 +197,7 @@ export async function deleteClient(
 ): Promise<void> {
   try {
     const id = req.params.id as string
-    const agencyId = (req as any).agencyId
+    const agencyId = req.user!.agencyId
 
     const existing = await prisma.client.findFirst({
       where: { id, agencyId },

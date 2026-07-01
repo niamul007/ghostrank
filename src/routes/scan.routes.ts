@@ -4,16 +4,15 @@
 
 import { Router } from "express"
 import { startScan, getScan, listScans } from "../controllers/scan.controller"
+import { authenticate } from "../middleware/auth"
 
 const router = Router()
 
-// Start a new scan for a client
+// All scan routes require authentication
+router.use(authenticate)
+
 router.post("/clients/:clientId/scans", startScan)
-
-// Get a specific scan by ID (with results)
 router.get("/scans/:id", getScan)
-
-// List all scans for a client
 router.get("/clients/:clientId/scans", listScans)
 
 export default router

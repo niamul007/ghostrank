@@ -4,7 +4,7 @@
 // Centralized config for all AI API connections.
 // API keys come from .env — never hardcode them.
 
-import type { Platform } from "../types/index.ts"
+import type { Platform } from "../types/index.ts";
 
 /**
  * Config shape for each AI platform.
@@ -12,10 +12,10 @@ import type { Platform } from "../types/index.ts"
  * the API endpoint, and a timeout.
  */
 interface PlatformConfig {
-  apiKey: string
-  model: string
-  baseUrl: string
-  timeoutMs: number
+  apiKey: string;
+  model: string;
+  baseUrl: string;
+  timeoutMs: number;
 }
 
 /**
@@ -48,11 +48,11 @@ export const aiConfig: Record<Platform, PlatformConfig> = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? "",
-    model: "gemini-2.0-flash",
+    model: "gemini-1.5-flash", // ← change this line
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     timeoutMs: 30_000,
   },
-}
+};
 
 /**
  * Checks that all required API keys are set in the environment.
@@ -65,19 +65,19 @@ export const aiConfig: Record<Platform, PlatformConfig> = {
  * We warn instead of crash so development isn't blocked.
  */
 export function validateAIConfig(): { valid: boolean; missing: Platform[] } {
-  const missing: Platform[] = []
+  const missing: Platform[] = [];
 
   for (const [platform, config] of Object.entries(aiConfig)) {
     if (!config.apiKey) {
-      missing.push(platform as Platform)
+      missing.push(platform as Platform);
     }
   }
 
   if (missing.length > 0) {
     console.warn(
-      `⚠️  Missing API keys for: ${missing.join(", ")}. Scans for these platforms will fail.`
-    )
+      `⚠️  Missing API keys for: ${missing.join(", ")}. Scans for these platforms will fail.`,
+    );
   }
 
-  return { valid: missing.length === 0, missing }
+  return { valid: missing.length === 0, missing };
 }

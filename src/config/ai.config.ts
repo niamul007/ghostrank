@@ -48,7 +48,7 @@ export const aiConfig: Record<Platform, PlatformConfig> = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? "",
-    model: "gemini-1.5-flash", // ← change this line
+    model: "gemini-2.0-flash-lite", // ← change this line
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     timeoutMs: 30_000,
   },

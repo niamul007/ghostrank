@@ -242,22 +242,36 @@ export async function queryPlatform(
  * This is a critical pattern for any app calling external APIs.
  * Never let one flaky service take down your whole operation.
  */
+/**
+ * Small delay helper — waits for the given milliseconds.
+ * Used to avoid hitting API rate limits.
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Sends all prompts to their target platforms with rate limiting.
+ *
+ * Instead of firing all 15 calls at once (which hits rate limits),
+ * we send them one by one with a small delay between each.
+ * Slower but reliable.
+ */
 export async function queryAllPlatforms(
   prompts: BuiltPrompt[]
 ): Promise<AIResponse[]> {
-  const results = await Promise.allSettled(
-    prompts.map((prompt) => queryPlatform(prompt.platform, prompt))
-  )
-
   const responses: AIResponse[] = []
 
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      responses.push(result.value)
-    } else {
-      // Log the failure but don't crash the whole scan
-      console.error(`Platform query failed:`, result.reason)
+  for (const prompt of prompts) {
+    try {
+      const response = await queryPlatform(prompt.platform, prompt)
+      responses.push(response)
+    } catch (error) {
+      console.error(`Platform query failed:`, error)
     }
+
+    // Wait 2 seconds between calls to avoid rate limits
+    await delay(2000)
   }
 
   return responses

@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken"
 import { AppError } from "../utils/AppError"
 
 interface JwtPayload {
-  userId: number
+  agencyId: string
   role: string
 }
 

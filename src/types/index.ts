@@ -3,10 +3,11 @@
 // ──────────────────────────────────────────
 
 /**
- * The three AI platforms we scan against.
- * "chatgpt" = OpenAI, "perplexity" = Perplexity, "gemini" = Google Gemini
+ * The AI platforms we scan against.
+ * "chatgpt" = OpenAI, "perplexity" = Perplexity, "gemini" = Google Gemini, "claude" = Anthropic
+ * ChatGPT / Perplexity / Gemini calls are paused for now — see aiQuerier.ts.
  */
-export type Platform = "chatgpt" | "perplexity" | "gemini"
+export type Platform = "chatgpt" | "perplexity" | "gemini" | "claude"
 
 /**
  * Sentiment of how the AI mentioned the business.

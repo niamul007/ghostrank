@@ -32,6 +32,11 @@ interface PlatformConfig {
  * Why 30 second timeout?
  * AI APIs can be slow under load. 30s is generous enough to avoid
  * false failures but short enough to not hang forever.
+ *
+ * ChatGPT / Perplexity / Gemini calls are paused for now (see aiQuerier.ts) —
+ * we're testing against Claude only until we have keys for the others.
+ * Their config entries stay here so the Record<Platform, ...> type still
+ * checks out and so re-enabling them later is a one-line uncomment.
  */
 export const aiConfig: Record<Platform, PlatformConfig> = {
   chatgpt: {
@@ -50,6 +55,12 @@ export const aiConfig: Record<Platform, PlatformConfig> = {
     apiKey: process.env.GEMINI_API_KEY ?? "",
     model: "gemini-2.0-flash",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    timeoutMs: 30_000,
+  },
+  claude: {
+    apiKey: process.env.ANTHROPIC_API_KEY ?? "",
+    model: "claude-opus-4-8",
+    baseUrl: "https://api.anthropic.com",
     timeoutMs: 30_000,
   },
 }

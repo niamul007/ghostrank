@@ -10,8 +10,7 @@
 // AI responses are unstructured text — no consistent format.
 // We have to be smart about how we search.
 
-import type { AIResponse, ParsedScanResult, Platform, PromptCategory, SentimentLabel } from "../types"
-import type { BuiltPrompt } from "./promptBuilder"
+import type { AIResponse, BuiltPrompt, ParsedScanResult, Platform, PromptCategory, SentimentLabel } from "../types"
 
 // ──────────────────────────────────────────
 // Mention Detection

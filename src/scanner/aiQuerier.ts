@@ -12,6 +12,7 @@
 
 import OpenAI from "openai"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import Anthropic from "@anthropic-ai/sdk"
 import { aiConfig } from "../config/ai.config"
 import type { AIResponse, BuiltPrompt, Platform } from "../types/index.ts"
 
@@ -51,6 +52,18 @@ function getPerplexityClient(): OpenAI {
  */
 function getGeminiClient(): GoogleGenerativeAI {
   return new GoogleGenerativeAI(aiConfig.gemini.apiKey)
+}
+
+/**
+ * Claude client — uses Anthropic's official SDK.
+ * This is the only platform currently wired into queryPlatform() below;
+ * ChatGPT/Perplexity/Gemini are paused until we're testing multiple platforms.
+ */
+function getClaudeClient(): Anthropic {
+  return new Anthropic({
+    apiKey: aiConfig.claude.apiKey,
+    timeout: aiConfig.claude.timeoutMs,
+  })
 }
 
 // ──────────────────────────────────────────
@@ -139,6 +152,30 @@ async function queryGemini(promptText: string): Promise<string> {
   return response.text()
 }
 
+/**
+ * Sends a prompt to Claude (Anthropic) and returns the raw response.
+ *
+ * Same system prompt intent as the other platforms: act like a helpful
+ * local recommendation engine and be direct about specific businesses.
+ */
+async function queryClaude(promptText: string): Promise<string> {
+  const client = getClaudeClient()
+
+  const response = await client.messages.create({
+    model: aiConfig.claude.model,
+    max_tokens: 1024,
+    system:
+      "You are a helpful local business recommendation assistant. " +
+      "When asked about businesses in a specific area, provide specific " +
+      "business names and brief descriptions based on your knowledge. " +
+      "Be direct and specific in your recommendations.",
+    messages: [{ role: "user", content: promptText }],
+  })
+
+  const textBlock = response.content.find((block) => block.type === "text")
+  return textBlock?.type === "text" ? textBlock.text : ""
+}
+
 // ──────────────────────────────────────────
 // Main query functions (exported)
 // ──────────────────────────────────────────
@@ -162,15 +199,20 @@ export async function queryPlatform(
   let rawText: string
 
   switch (platform) {
-    case "chatgpt":
-      rawText = await queryChatGPT(prompt.text)
+    case "claude":
+      rawText = await queryClaude(prompt.text)
       break
-    case "perplexity":
-      rawText = await queryPerplexity(prompt.text)
-      break
-    case "gemini":
-      rawText = await queryGemini(prompt.text)
-      break
+    // Paused for now — testing against Claude only (we only have an
+    // Anthropic key at the moment). Uncomment to re-enable.
+    // case "chatgpt":
+    //   rawText = await queryChatGPT(prompt.text)
+    //   break
+    // case "perplexity":
+    //   rawText = await queryPerplexity(prompt.text)
+    //   break
+    // case "gemini":
+    //   rawText = await queryGemini(prompt.text)
+    //   break
     default:
       throw new Error(`Unknown platform: ${platform}`)
   }

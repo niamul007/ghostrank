@@ -114,7 +114,9 @@ function calcPositionQuality(results: ParsedScanResult[]): number {
  * only on ChatGPT misses everyone using Perplexity or Gemini.
  */
 function calcPlatformCoverage(results: ParsedScanResult[]): number {
-  const platforms: Platform[] = ["chatgpt", "perplexity", "gemini"]
+  // ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) —
+  // testing against Claude only. Add them back here once re-enabled there.
+  const platforms: Platform[] = ["claude"]
 
   let coveredCount = 0
 
@@ -174,10 +176,13 @@ function calcSentimentBonus(results: ParsedScanResult[]): number {
 function calcPlatformScores(
   results: ParsedScanResult[]
 ): Record<Platform, number> {
-  const platforms: Platform[] = ["chatgpt", "perplexity", "gemini"]
+  // Keep every Platform key populated (Record<Platform, number> requires all
+  // of them) even though only "claude" gets real data while the others are
+  // paused — untested platforms just report 0 instead of being omitted.
+  const allPlatforms: Platform[] = ["chatgpt", "perplexity", "gemini", "claude"]
   const scores = {} as Record<Platform, number>
 
-  for (const platform of platforms) {
+  for (const platform of allPlatforms) {
     const platformResults = results.filter((r) => r.platform === platform)
 
     if (platformResults.length === 0) {

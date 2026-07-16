@@ -89,13 +89,16 @@ function generateRecommendations(
   }
 
   // Platform-specific gaps
-  const platforms: Platform[] = ["chatgpt", "perplexity", "gemini"]
+  // ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) —
+  // testing against Claude only. Add them back here once re-enabled there.
+  const platforms: Platform[] = ["claude"]
   for (const platform of platforms) {
     if (platformScores[platform] === 0) {
       const platformName =
         platform === "chatgpt" ? "ChatGPT" :
         platform === "perplexity" ? "Perplexity" :
-        "Google Gemini"
+        platform === "gemini" ? "Google Gemini" :
+        "Claude"
       recommendations.push(
         `You have zero visibility on ${platformName}. ` +
         `This means anyone using ${platformName} to find a business like yours ` +
@@ -164,7 +167,9 @@ export async function generateReport(scanId: string): Promise<ReportData> {
   const score = scan.score ?? 0
 
   // Build platform breakdown
-  const platforms: Platform[] = ["chatgpt", "perplexity", "gemini"]
+  // ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) —
+  // testing against Claude only. Add them back here once re-enabled there.
+  const platforms: Platform[] = ["claude"]
   const platformBreakdown = platforms.map((platform) => {
     const platformResults = scan.scanResults.filter(
       (r) => r.platform === platform
@@ -190,7 +195,7 @@ export async function generateReport(scanId: string): Promise<ReportData> {
   // Generate recommendations
   const recommendations = generateRecommendations(
     score,
-    rawScore?.byPlatform ?? { chatgpt: 0, perplexity: 0, gemini: 0 },
+    rawScore?.byPlatform ?? { chatgpt: 0, perplexity: 0, gemini: 0, claude: 0 },
     rawScore?.mentionCount ?? 0,
     rawScore?.totalPrompts ?? 0
   )

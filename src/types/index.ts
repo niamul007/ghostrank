@@ -42,6 +42,18 @@ export interface BuiltPrompt {
 }
 
 /**
+ * Token usage for a single Claude API call, including prompt-cache
+ * activity. `cacheReadInputTokens > 0` means the system prompt was
+ * served from cache instead of being billed at full input price.
+ */
+export interface ClaudeUsage {
+  inputTokens: number
+  outputTokens: number
+  cacheCreationInputTokens: number
+  cacheReadInputTokens: number
+}
+
+/**
  * Raw response from an AI platform before parsing.
  * Returned by aiQuerier.ts.
  */
@@ -51,6 +63,8 @@ export interface AIResponse {
   rawText: string
   /** How long the API call took — useful for monitoring */
   durationMs: number
+  /** Only populated for Claude — token/cache usage for this call */
+  usage?: ClaudeUsage
 }
 
 /**

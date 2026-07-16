@@ -14,7 +14,7 @@ import OpenAI from "openai"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import Anthropic from "@anthropic-ai/sdk"
 import { aiConfig } from "../config/ai.config"
-import type { AIResponse, BuiltPrompt, Platform } from "../types/index.ts"
+import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types/index.ts"
 
 // ──────────────────────────────────────────
 // SDK Clients — initialized once, reused for all calls
@@ -153,27 +153,65 @@ async function queryGemini(promptText: string): Promise<string> {
 }
 
 /**
- * Sends a prompt to Claude (Anthropic) and returns the raw response.
+ * The Claude system prompt — identical on every call this process makes.
+ * Pulled out to a constant so the exact same string (and thus the exact
+ * same cache key) is sent every time; a rebuilt string with different
+ * whitespace would silently miss the cache.
+ */
+const CLAUDE_SYSTEM_PROMPT =
+  "You are a helpful local business recommendation assistant. " +
+  "When asked about businesses in a specific area, provide specific " +
+  "business names and brief descriptions based on your knowledge. " +
+  "Be direct and specific in your recommendations."
+
+/**
+ * Sends a prompt to Claude (Anthropic) and returns the raw response
+ * plus token usage (so callers can see cache hits/misses).
  *
  * Same system prompt intent as the other platforms: act like a helpful
  * local recommendation engine and be direct about specific businesses.
+ *
+ * Prompt caching: a scan fires several prompts at Claude back-to-back,
+ * all sharing this exact system prompt. Marking it `cache_control:
+ * ephemeral` means the 2nd-5th calls in a scan can read it from cache
+ * (~0.1x cost) instead of paying full input price every time — the 1st
+ * call in each 5-minute window pays a one-time ~1.25x write instead.
+ * Note: Anthropic enforces a minimum cacheable prefix (4096 tokens for
+ * claude-opus-4-8) — this system prompt is well under that, so on the
+ * current model cache_creation_input_tokens will read 0 (no charge, no
+ * error, just no-op). The marker is harmless and starts paying off the
+ * moment the system prompt grows or the model changes to one with a
+ * lower minimum (e.g. Sonnet models cache from 1024 tokens).
  */
-async function queryClaude(promptText: string): Promise<string> {
+async function queryClaude(
+  promptText: string
+): Promise<{ text: string; usage: ClaudeUsage }> {
   const client = getClaudeClient()
 
   const response = await client.messages.create({
     model: aiConfig.claude.model,
     max_tokens: 1024,
-    system:
-      "You are a helpful local business recommendation assistant. " +
-      "When asked about businesses in a specific area, provide specific " +
-      "business names and brief descriptions based on your knowledge. " +
-      "Be direct and specific in your recommendations.",
+    system: [
+      {
+        type: "text",
+        text: CLAUDE_SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
     messages: [{ role: "user", content: promptText }],
   })
 
   const textBlock = response.content.find((block) => block.type === "text")
-  return textBlock?.type === "text" ? textBlock.text : ""
+
+  return {
+    text: textBlock?.type === "text" ? textBlock.text : "",
+    usage: {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      cacheCreationInputTokens: response.usage.cache_creation_input_tokens ?? 0,
+      cacheReadInputTokens: response.usage.cache_read_input_tokens ?? 0,
+    },
+  }
 }
 
 // ──────────────────────────────────────────
@@ -197,11 +235,15 @@ export async function queryPlatform(
   const startTime = Date.now()
 
   let rawText: string
+  let usage: ClaudeUsage | undefined
 
   switch (platform) {
-    case "claude":
-      rawText = await queryClaude(prompt.text)
+    case "claude": {
+      const result = await queryClaude(prompt.text)
+      rawText = result.text
+      usage = result.usage
       break
+    }
     // Paused for now — testing against Claude only (we only have an
     // Anthropic key at the moment). Uncomment to re-enable.
     // case "chatgpt":
@@ -224,6 +266,7 @@ export async function queryPlatform(
     prompt: prompt.text,
     rawText,
     durationMs,
+    usage,
   }
 }
 
@@ -274,5 +317,35 @@ export async function queryAllPlatforms(
     await delay(2000)
   }
 
+  logCacheSummary(responses)
+
   return responses
+}
+
+/**
+ * Prints a one-line cache summary after a scan so prompt-cache activity
+ * is visible without digging into individual response objects.
+ */
+function logCacheSummary(responses: AIResponse[]): void {
+  const claudeUsages = responses
+    .map((r) => r.usage)
+    .filter((u): u is ClaudeUsage => u !== undefined)
+
+  if (claudeUsages.length === 0) return
+
+  const totals = claudeUsages.reduce(
+    (acc, u) => ({
+      input: acc.input + u.inputTokens,
+      output: acc.output + u.outputTokens,
+      cacheWrite: acc.cacheWrite + u.cacheCreationInputTokens,
+      cacheRead: acc.cacheRead + u.cacheReadInputTokens,
+    }),
+    { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }
+  )
+
+  console.log(
+    `[claude cache] ${claudeUsages.length} call(s) — ` +
+      `input=${totals.input} output=${totals.output} ` +
+      `cache_write=${totals.cacheWrite} cache_read=${totals.cacheRead}`
+  )
 }

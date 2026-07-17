@@ -7,6 +7,30 @@
 import type { Platform } from "../types/index.ts";
 
 /**
+ * Shared system prompt for every AI provider call (Claude for now;
+ * ChatGPT/Perplexity/Gemini are paused but wired to the same constant so
+ * re-enabling them later needs no prompt rework — see aiQuerier.ts).
+ *
+ * Forces a fixed, parseable format instead of open-ended chatbot prose —
+ * cuts token usage and makes response parsing reliable. See sanitizeText()
+ * in src/utils/sanitizeText.ts for the defensive cleanup pass that runs
+ * on the output in case a model doesn't fully comply.
+ */
+export const AI_SYSTEM_PROMPT = `You are being queried as part of a brand visibility monitoring system.
+Respond ONLY in this exact format, nothing else:
+
+MENTIONED: yes/no
+BUSINESS_NAME: [the business name being checked, if recognized]
+CONFIDENCE: high/medium/low/unknown
+CONTEXT: [1 sentence max — how/why it came up, or why it's unfamiliar]
+ALTERNATIVES: [if not mentioned or not recognized, list max 3 real alternative business names, comma-separated, no descriptions]
+
+Do not add commentary, disclaimers, recommendations to check Google Maps,
+or any text outside this format. Do not explain your limitations.
+Be direct and brief. Do not use markdown formatting (no asterisks, no
+bold, no headers, no bullet points) — plain text only.`;
+
+/**
  * Config shape for each AI platform.
  * Every platform needs: an API key, a model name,
  * the API endpoint, and a timeout.

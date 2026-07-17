@@ -11,6 +11,7 @@
 // We have to be smart about how we search.
 
 import type { AIResponse, BuiltPrompt, ParsedScanResult, Platform, PromptCategory, SentimentLabel } from "../types"
+import { sanitizeText } from "../utils/sanitizeText"
 
 // ──────────────────────────────────────────
 // Mention Detection
@@ -241,6 +242,12 @@ function extractMentionContext(
  * - mentioned: was the business found?
  * - position: where in the list?
  * - sentiment: positive/neutral/negative?
+ *
+ * Detection runs against the AI's original rawText, not the sanitized
+ * text below — detectPosition specifically looks for markdown-style list
+ * markers ("1.", "2)", "#"), which sanitizeText strips. Sanitizing first
+ * would silently zero out every position. Only the `response` field that
+ * actually gets stored/returned is sanitized.
  */
 export function parseResponse(
   response: AIResponse,
@@ -253,7 +260,7 @@ export function parseResponse(
     platform: response.platform,
     prompt: response.prompt,
     category,
-    response: response.rawText,
+    response: sanitizeText(response.rawText),
     mentioned,
     position: mentioned
       ? detectPosition(response.rawText, businessName)

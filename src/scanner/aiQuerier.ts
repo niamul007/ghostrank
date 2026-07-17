@@ -13,7 +13,7 @@
 import OpenAI from "openai"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import Anthropic from "@anthropic-ai/sdk"
-import { aiConfig } from "../config/ai.config"
+import { AI_SYSTEM_PROMPT, aiConfig } from "../config/ai.config"
 import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types/index.ts"
 
 // ──────────────────────────────────────────
@@ -73,9 +73,9 @@ function getClaudeClient(): Anthropic {
 /**
  * Sends a prompt to ChatGPT and returns the raw response.
  *
- * The system message is important — it tells ChatGPT to act like
- * a helpful local recommendation engine. Without it, ChatGPT might
- * refuse to recommend specific businesses or add too many disclaimers.
+ * Uses the shared AI_SYSTEM_PROMPT (see ai.config.ts) so ChatGPT responds
+ * in the same fixed MENTIONED:/BUSINESS_NAME:/... format as Claude, instead
+ * of open-ended chatbot prose.
  */
 async function queryChatGPT(promptText: string): Promise<string> {
   const client = getOpenAIClient()
@@ -85,11 +85,7 @@ async function queryChatGPT(promptText: string): Promise<string> {
     messages: [
       {
         role: "system",
-        content:
-          "You are a helpful local business recommendation assistant. " +
-          "When asked about businesses in a specific area, provide specific " +
-          "business names and brief descriptions based on your knowledge. " +
-          "Be direct and specific in your recommendations.",
+        content: AI_SYSTEM_PROMPT,
       },
       {
         role: "user",
@@ -111,6 +107,9 @@ async function queryChatGPT(promptText: string): Promise<string> {
  *
  * Notice: same OpenAI SDK, different baseURL. That's the power of
  * API compatibility — learn one SDK, use it for multiple services.
+ *
+ * Uses the shared AI_SYSTEM_PROMPT (see ai.config.ts) — same fixed
+ * response format as every other provider.
  */
 async function queryPerplexity(promptText: string): Promise<string> {
   const client = getPerplexityClient()
@@ -120,10 +119,7 @@ async function queryPerplexity(promptText: string): Promise<string> {
     messages: [
       {
         role: "system",
-        content:
-          "You are a helpful local business recommendation assistant. " +
-          "Provide specific business names and descriptions. " +
-          "Be direct and specific.",
+        content: AI_SYSTEM_PROMPT,
       },
       {
         role: "user",
@@ -141,10 +137,17 @@ async function queryPerplexity(promptText: string): Promise<string> {
  * Gemini's SDK is different from OpenAI's — Google uses their own format.
  * Instead of chat.completions.create(), it's model.generateContent().
  * Different syntax, same concept: send text in, get text out.
+ *
+ * `systemInstruction` is Gemini's equivalent of a system message — set to
+ * the shared AI_SYSTEM_PROMPT (see ai.config.ts) for the same fixed
+ * response format as every other provider.
  */
 async function queryGemini(promptText: string): Promise<string> {
   const client = getGeminiClient()
-  const model = client.getGenerativeModel({ model: aiConfig.gemini.model })
+  const model = client.getGenerativeModel({
+    model: aiConfig.gemini.model,
+    systemInstruction: AI_SYSTEM_PROMPT,
+  })
 
   const result = await model.generateContent(promptText)
   const response = result.response
@@ -153,23 +156,12 @@ async function queryGemini(promptText: string): Promise<string> {
 }
 
 /**
- * The Claude system prompt — identical on every call this process makes.
- * Pulled out to a constant so the exact same string (and thus the exact
- * same cache key) is sent every time; a rebuilt string with different
- * whitespace would silently miss the cache.
- */
-const CLAUDE_SYSTEM_PROMPT =
-  "You are a helpful local business recommendation assistant. " +
-  "When asked about businesses in a specific area, provide specific " +
-  "business names and brief descriptions based on your knowledge. " +
-  "Be direct and specific in your recommendations."
-
-/**
  * Sends a prompt to Claude (Anthropic) and returns the raw response
  * plus token usage (so callers can see cache hits/misses).
  *
- * Same system prompt intent as the other platforms: act like a helpful
- * local recommendation engine and be direct about specific businesses.
+ * Uses the shared AI_SYSTEM_PROMPT (see ai.config.ts) — forces the fixed
+ * MENTIONED:/BUSINESS_NAME:/CONFIDENCE:/CONTEXT:/ALTERNATIVES: format
+ * instead of open-ended chatbot prose.
  *
  * Prompt caching: a scan fires several prompts at Claude back-to-back,
  * all sharing this exact system prompt. Marking it `cache_control:
@@ -177,11 +169,11 @@ const CLAUDE_SYSTEM_PROMPT =
  * (~0.1x cost) instead of paying full input price every time — the 1st
  * call in each 5-minute window pays a one-time ~1.25x write instead.
  * Note: Anthropic enforces a minimum cacheable prefix (4096 tokens for
- * claude-opus-4-8) — this system prompt is well under that, so on the
- * current model cache_creation_input_tokens will read 0 (no charge, no
- * error, just no-op). The marker is harmless and starts paying off the
- * moment the system prompt grows or the model changes to one with a
- * lower minimum (e.g. Sonnet models cache from 1024 tokens).
+ * claude-opus-4-8) — this system prompt (~150 tokens) is well under that,
+ * so on the current model cache_creation_input_tokens will read 0 (no
+ * charge, no error, just no-op). The marker is harmless and starts paying
+ * off the moment the system prompt grows or the model changes to one
+ * with a lower minimum (e.g. Sonnet models cache from 1024 tokens).
  */
 async function queryClaude(
   promptText: string
@@ -194,7 +186,7 @@ async function queryClaude(
     system: [
       {
         type: "text",
-        text: CLAUDE_SYSTEM_PROMPT,
+        text: AI_SYSTEM_PROMPT,
         cache_control: { type: "ephemeral" },
       },
     ],

@@ -11,24 +11,21 @@ import type { Platform } from "../types/index.ts";
  * ChatGPT/Perplexity/Gemini are paused but wired to the same constant so
  * re-enabling them later needs no prompt rework — see aiQuerier.ts).
  *
- * Forces a fixed, parseable format instead of open-ended chatbot prose —
- * cuts token usage and makes response parsing reliable. See sanitizeText()
- * in src/utils/sanitizeText.ts for the defensive cleanup pass that runs
- * on the output in case a model doesn't fully comply.
+ * Deliberately NOT a rigid self-report template. An earlier version of
+ * this prompt forced MENTIONED: yes/no / CONFIDENCE: high-medium-low
+ * fields and asked the AI to grade its own answer — that made it stop
+ * reasoning naturally (it filled boxes instead of actually thinking about
+ * the business) and made a typo'd or indirectly-referenced business name
+ * produce an unreliable self-report. Detection now happens in code
+ * against this free-form text instead — see src/scanner/detector.ts's
+ * fuzzy matching. This prompt's only job is: answer like a real local
+ * guide would, and skip markdown syntax. See sanitizeText() in
+ * src/utils/sanitizeText.ts for the defensive cleanup pass that runs on
+ * the output in case a model doesn't fully comply on the markdown part.
  */
-export const AI_SYSTEM_PROMPT = `You are being queried as part of a brand visibility monitoring system.
-Respond ONLY in this exact format, nothing else:
+export const AI_SYSTEM_PROMPT = `You are being asked a question the way a real customer would ask it when researching local businesses. Answer naturally and specifically, based on your own knowledge — name real businesses when you're aware of relevant ones, and briefly explain why you'd suggest them. If you don't know of a good option or aren't confident, say so plainly rather than refusing to engage or padding your answer with disclaimers and suggestions to "check Google Maps."
 
-MENTIONED: yes/no
-BUSINESS_NAME: [the business name being checked, if recognized]
-CONFIDENCE: high/medium/low/unknown
-CONTEXT: [1 sentence max — how/why it came up, or why it's unfamiliar]
-ALTERNATIVES: [if not mentioned or not recognized, list max 3 real alternative business names, comma-separated, no descriptions]
-
-Do not add commentary, disclaimers, recommendations to check Google Maps,
-or any text outside this format. Do not explain your limitations.
-Be direct and brief. Do not use markdown formatting (no asterisks, no
-bold, no headers, no bullet points) — plain text only.`;
+Write in plain, clean prose: full sentences, no markdown formatting — no asterisks, no bold text, no headers, no bullet points. If you're comparing a few businesses, it's fine to walk through them in plain numbered sentences (e.g. "1. Business Name — reason"), just don't use markdown syntax to format it.`;
 
 /**
  * Config shape for each AI platform.

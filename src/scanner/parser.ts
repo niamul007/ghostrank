@@ -2,88 +2,22 @@
 // GhostRank — Response Parser
 // ──────────────────────────────────────────
 // Takes raw AI responses and extracts:
-// 1. Was the business mentioned? (boolean)
+// 1. Was the business mentioned? (boolean, via fuzzy matching — see detector.ts)
 // 2. What position in the list? (number or null)
 // 3. What sentiment? (positive/neutral/negative)
 //
 // This is the trickiest part of the scanner because
 // AI responses are unstructured text — no consistent format.
 // We have to be smart about how we search.
+//
+// Mention detection itself lives in detector.ts (fuzzy word-alignment
+// matching, context extraction, alternative-business extraction) — this
+// file orchestrates that plus the position/sentiment logic that was
+// already here.
 
 import type { AIResponse, BuiltPrompt, ParsedScanResult, Platform, PromptCategory, SentimentLabel } from "../types"
 import { sanitizeText } from "../utils/sanitizeText"
-
-// ──────────────────────────────────────────
-// Mention Detection
-// ──────────────────────────────────────────
-
-/**
- * Checks if the business name appears in the AI response.
- *
- * Why not just response.includes(businessName)?
- * Because AI models don't always use the exact name.
- * "Smile Dental Clinic" might appear as:
- * - "Smile Dental" (partial match)
- * - "smile dental clinic" (different case)
- * - "Smile Dental & Orthodontics" (extended name)
- *
- * Strategy:
- * 1. Case-insensitive full name match
- * 2. If no full match, try matching significant words
- *    (skip common words like "the", "and", "clinic")
- *
- * Why word boundary (\b)?
- * Without it, "Smile" would match "SmileMore" or "unsmile".
- * Word boundaries ensure we match whole words only.
- */
-export function detectMention(
-  responseText: string,
-  businessName: string
-): boolean {
-  const text = responseText.toLowerCase()
-  const name = businessName.toLowerCase().trim()
-
-  // Try 1: exact full name match (case-insensitive)
-  if (text.includes(name)) {
-    return true
-  }
-
-  // Try 2: match significant words from the business name
-  // "Smile Dental Clinic" → check if "smile" AND "dental" appear
-  const skipWords = new Set([
-    "the", "and", "of", "in", "at", "by", "for", "a", "an",
-    "llc", "inc", "co", "ltd", "corp",
-    "clinic", "studio", "agency", "shop", "store", "center",
-    "centre", "group", "services", "solutions",
-  ])
-
-  const significantWords = name
-    .split(/\s+/)
-    .filter((word) => word.length > 2 && !skipWords.has(word))
-
-  // Need at least 2 significant words to match, or 1 if name is short
-  const threshold = significantWords.length >= 2 ? 2 : 1
-
-  let matchCount = 0
-  for (const word of significantWords) {
-    // Use word boundary to avoid partial matches
-    const regex = new RegExp(`\\b${escapeRegex(word)}\\b`, "i")
-    if (regex.test(responseText)) {
-      matchCount++
-    }
-  }
-
-  return matchCount >= threshold
-}
-
-/**
- * Escapes special regex characters in a string.
- * Without this, a business name like "A+ Dental" would crash
- * because "+" is a special regex character.
- */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
+import { extractAlternatives, extractContext, findBestMatch } from "./detector"
 
 // ──────────────────────────────────────────
 // Position Detection
@@ -103,6 +37,11 @@ function escapeRegex(str: string): string {
  * - Business not mentioned
  * - Response isn't a numbered list
  * - Can't determine position
+ *
+ * Unchanged from before: still line-level exact/significant-word
+ * matching rather than the fuzzy detector, since it's only scanning for
+ * which line has a leading number, not deciding whether the business was
+ * mentioned at all (that's handled upstream by detector.ts's fuzzy match).
  */
 export function detectPosition(
   responseText: string,
@@ -154,15 +93,22 @@ function hasSignificantWordMatch(line: string, businessName: string): boolean {
 // ──────────────────────────────────────────
 
 /**
- * Determines if the mention is positive, neutral, or negative.
+ * Determines if a mention was positive, neutral, or negative.
  *
- * Simple keyword-based approach. Not as sophisticated as a
- * dedicated NLP model, but good enough for v1.
+ * Simple keyword-based approach. Not as sophisticated as a dedicated NLP
+ * model, but good enough for v1 and — crucially — free. This only runs
+ * once a mention is already confirmed by detector.ts's fuzzy match; it's
+ * summarizing what's already known to exist in the text, not deciding
+ * whether it exists.
  *
  * Why not use AI to analyze sentiment?
- * That would mean making ANOTHER API call for each result,
- * doubling our costs. Keyword matching is free and fast.
- * We can upgrade to AI-based sentiment in v2 if needed.
+ * That would mean making ANOTHER API call for each result, doubling our
+ * costs. Keyword matching is free and fast. We can upgrade to an AI-based
+ * pass in v2 if this proves too coarse in practice.
+ *
+ * Takes the extracted context sentence directly (from detector.ts's
+ * extractContext) rather than re-deriving it — one context-extraction
+ * implementation, not two.
  */
 
 const POSITIVE_SIGNALS = [
@@ -180,14 +126,7 @@ const NEGATIVE_SIGNALS = [
   "below average", "disappointing", "overpriced",
 ]
 
-export function detectSentiment(
-  responseText: string,
-  businessName: string
-): SentimentLabel | null {
-  // Find the section of text around the business mention
-  const context = extractMentionContext(responseText, businessName)
-  if (!context) return null
-
+export function detectSentiment(context: string): SentimentLabel {
   const lower = context.toLowerCase()
 
   let positiveCount = 0
@@ -206,31 +145,6 @@ export function detectSentiment(
   return "neutral"
 }
 
-/**
- * Extracts ~200 characters around the business mention.
- *
- * Why not analyze the whole response?
- * The response might mention 10 businesses. We only care about
- * the words NEAR our client's name. "Excellent" on line 1
- * about a competitor doesn't mean our client is excellent.
- */
-function extractMentionContext(
-  responseText: string,
-  businessName: string
-): string | null {
-  const lower = responseText.toLowerCase()
-  const nameLower = businessName.toLowerCase()
-
-  const index = lower.indexOf(nameLower)
-  if (index === -1) return null
-
-  // Grab 100 chars before and 100 chars after the mention
-  const start = Math.max(0, index - 100)
-  const end = Math.min(responseText.length, index + nameLower.length + 100)
-
-  return responseText.slice(start, end)
-}
-
 // ──────────────────────────────────────────
 // Main parse functions (exported)
 // ──────────────────────────────────────────
@@ -238,15 +152,12 @@ function extractMentionContext(
 /**
  * Parses a single AI response into a structured result.
  *
- * Takes the raw response and extracts:
- * - mentioned: was the business found?
- * - position: where in the list?
- * - sentiment: positive/neutral/negative?
- *
- * Detection runs against the AI's original rawText, not the sanitized
- * text below — detectPosition specifically looks for markdown-style list
- * markers ("1.", "2)", "#"), which sanitizeText strips. Sanitizing first
- * would silently zero out every position. Only the `response` field that
+ * Mention detection is entirely code-driven (detector.ts's fuzzy
+ * word-alignment match) — never the AI's own self-report. Detection runs
+ * against the AI's original rawText, not the sanitized text stored below:
+ * detectPosition specifically looks for markdown-style list markers
+ * ("1.", "2)", "#"), which sanitizeText strips, so sanitizing first would
+ * silently zero out every position. Only the `response` field that
  * actually gets stored/returned is sanitized.
  */
 export function parseResponse(
@@ -254,7 +165,10 @@ export function parseResponse(
   businessName: string,
   category: PromptCategory
 ): ParsedScanResult {
-  const mentioned = detectMention(response.rawText, businessName)
+  const match = findBestMatch(response.rawText, businessName)
+  const mentioned = match !== null && match.strength !== "none"
+
+  const context = mentioned && match ? extractContext(response.rawText, match) : null
 
   return {
     platform: response.platform,
@@ -262,12 +176,17 @@ export function parseResponse(
     category,
     response: sanitizeText(response.rawText),
     mentioned,
+    matchStrength: match?.strength ?? "none",
+    matchScore: match?.score ?? 0,
     position: mentioned
       ? detectPosition(response.rawText, businessName)
       : null,
-    sentiment: mentioned
-      ? detectSentiment(response.rawText, businessName)
-      : null,
+    sentiment: context ? detectSentiment(context) : null,
+    // Best-effort — see extractAlternatives' doc comment on its
+    // reliability. Computed regardless of `mentioned` since it's most
+    // useful precisely when the client's business *didn't* show up: who
+    // did the AI suggest instead?
+    alternatives: extractAlternatives(response.rawText, businessName),
   }
 }
 

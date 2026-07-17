@@ -16,6 +16,15 @@ export type Platform = "chatgpt" | "perplexity" | "gemini" | "claude"
 export type SentimentLabel = "positive" | "neutral" | "negative"
 
 /**
+ * How strong the fuzzy business-name match found in an AI response was —
+ * see src/scanner/detector.ts for the scoring. "exact" = same name
+ * allowing for case/punctuation only, "fuzzy" = close enough (typos,
+ * dropped generic words) to be confident it's the same business, "none"
+ * = not found.
+ */
+export type MatchStrength = "exact" | "fuzzy" | "none"
+
+/**
  * Category of prompt — each tests a different way customers search.
  * "direct"     → "best dentist in Miami"
  * "comparison" → "compare top dentists in Miami"
@@ -76,12 +85,24 @@ export interface ParsedScanResult {
   prompt: string
   category: PromptCategory
   response: string
-  /** Was the business name found in the AI's response? */
+  /** Was the business name found in the AI's response? (matchStrength !== "none") */
   mentioned: boolean
+  /** How confident the fuzzy match was — see MatchStrength. */
+  matchStrength: MatchStrength
+  /** Raw 0..1 similarity score behind matchStrength, for debugging/tuning. */
+  matchScore: number
   /** If mentioned, what position in the list? (1 = first, null = not in a list) */
   position: number | null
   /** Was the mention positive, neutral, or negative? */
   sentiment: SentimentLabel | null
+  /**
+   * Other business names detected in the response — most useful when
+   * `mentioned` is false (who got recommended instead?). Best-effort
+   * plain-text heuristic, not authoritative — see extractAlternatives()
+   * in detector.ts. Not currently persisted to the database (ScanResult
+   * has no column for it yet).
+   */
+  alternatives: string[]
 }
 
 // ──────────────────────────────────────────

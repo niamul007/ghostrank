@@ -73,9 +73,10 @@ function getClaudeClient(): Anthropic {
 /**
  * Sends a prompt to ChatGPT and returns the raw response.
  *
- * Uses the shared AI_SYSTEM_PROMPT (see ai.config.ts) so ChatGPT responds
- * in the same fixed MENTIONED:/BUSINESS_NAME:/... format as Claude, instead
- * of open-ended chatbot prose.
+ * Uses the shared AI_SYSTEM_PROMPT (see ai.config.ts) — natural, free-form
+ * answers with no markdown syntax. Detection (was it actually mentioned?)
+ * happens afterward in src/scanner/detector.ts, not by asking the model
+ * to grade itself.
  */
 async function queryChatGPT(promptText: string): Promise<string> {
   const client = getOpenAIClient()
@@ -159,9 +160,10 @@ async function queryGemini(promptText: string): Promise<string> {
  * Sends a prompt to Claude (Anthropic) and returns the raw response
  * plus token usage (so callers can see cache hits/misses).
  *
- * Uses the shared AI_SYSTEM_PROMPT (see ai.config.ts) — forces the fixed
- * MENTIONED:/BUSINESS_NAME:/CONFIDENCE:/CONTEXT:/ALTERNATIVES: format
- * instead of open-ended chatbot prose.
+ * Uses the shared AI_SYSTEM_PROMPT (see ai.config.ts) — natural, free-form
+ * answers with no markdown syntax. Detection (was it actually mentioned?)
+ * happens afterward in src/scanner/detector.ts, not by asking the model
+ * to grade itself.
  *
  * Prompt caching: a scan fires several prompts at Claude back-to-back,
  * all sharing this exact system prompt. Marking it `cache_control:
@@ -169,7 +171,7 @@ async function queryGemini(promptText: string): Promise<string> {
  * (~0.1x cost) instead of paying full input price every time — the 1st
  * call in each 5-minute window pays a one-time ~1.25x write instead.
  * Note: Anthropic enforces a minimum cacheable prefix (4096 tokens for
- * claude-opus-4-8) — this system prompt (~150 tokens) is well under that,
+ * claude-opus-4-8) — this system prompt (~190 tokens) is well under that,
  * so on the current model cache_creation_input_tokens will read 0 (no
  * charge, no error, just no-op). The marker is harmless and starts paying
  * off the moment the system prompt grows or the model changes to one

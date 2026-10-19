@@ -90,7 +90,20 @@ export async function runScan(payload: ScanJobPayload): Promise<void> {
     // ── Step 3: Query all AI platforms ────────────
     // Sends all 15 prompts concurrently using Promise.allSettled
     // Returns AIResponse[] (raw text from each platform)
-    const responses = await queryAllPlatforms(prompts)
+    const { responses, attempted, failures } = await queryAllPlatforms(prompts)
+
+    // If every call failed, this is an outage or a bad key — not a
+    // business that is invisible. Don't score it as 0.
+    if (responses.length === 0) {
+      await prisma.scan.update({
+        where: { id: scanId },
+        data: {
+          status: ScanStatus.FAILED,
+          errorMsg: "All AI queries failed, no score computed",
+        },
+      })
+      return
+    }
 
     // ── Step 4: Parse responses ──────────────────
     // Checks each response for: mention? position? sentiment?
@@ -129,15 +142,19 @@ export async function runScan(payload: ScanJobPayload): Promise<void> {
           status: ScanStatus.COMPLETED,
           score: score.overall,
           promptsUsed: prompts.map((p) => p.text),
-          rawResults: score as object,
+          rawResults: {
+            ...score,
+            queryFailures: { attempted, failed: failures.length, failures },
+          } as object,
         },
       })
     })
   } catch (error) {
     // ── If anything fails, mark scan as FAILED ───
-    // The error message gets saved so we can debug later
-    const errorMsg =
-      error instanceof Error ? error.message : "Unknown error"
+    // The real error is logged server-side only; the database gets a
+    // generic message so raw SDK/provider text is never stored
+    console.error("Scan failed unexpectedly:", error)
+    const errorMsg = "Scan failed unexpectedly"
 
     await prisma.scan
       .update({

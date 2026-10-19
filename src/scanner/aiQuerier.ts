@@ -67,6 +67,24 @@ function getClaudeClient(): Anthropic {
 }
 
 // ──────────────────────────────────────────
+// Result types
+// ──────────────────────────────────────────
+
+/** One prompt whose AI call failed. `error` is a short safe label, not raw provider text. */
+export interface QueryFailure {
+  prompt: string
+  platform: Platform
+  error: string
+}
+
+/** What queryAllPlatforms returns: the responses plus a record of what was attempted. */
+export interface QueryAllResult {
+  responses: AIResponse[]
+  attempted: number
+  failures: QueryFailure[]
+}
+
+// ──────────────────────────────────────────
 // Platform-specific query functions
 // ──────────────────────────────────────────
 
@@ -296,15 +314,22 @@ function delay(ms: number): Promise<void> {
  */
 export async function queryAllPlatforms(
   prompts: BuiltPrompt[]
-): Promise<AIResponse[]> {
+): Promise<QueryAllResult> {
   const responses: AIResponse[] = []
+  const failures: QueryFailure[] = []
 
   for (const prompt of prompts) {
     try {
       const response = await queryPlatform(prompt.platform, prompt)
       responses.push(response)
     } catch (error) {
+      // Full provider error stays in the server log only
       console.error(`Platform query failed:`, error)
+      failures.push({
+        prompt: prompt.text,
+        platform: prompt.platform,
+        error: describeFailure(error),
+      })
     }
 
     // Wait 2 seconds between calls to avoid rate limits
@@ -313,7 +338,21 @@ export async function queryAllPlatforms(
 
   logCacheSummary(responses)
 
-  return responses
+  return { responses, attempted: prompts.length, failures }
+}
+
+/**
+ * Builds a short, safe failure label (error type + HTTP status if any).
+ * Never includes the provider's raw message — that text can echo
+ * request details, so it is only logged, never stored.
+ */
+function describeFailure(error: unknown): string {
+  if (!(error instanceof Error)) return "Unknown error"
+
+  const status = (error as { status?: unknown }).status
+  return typeof status === "number"
+    ? `${error.name} (HTTP ${status})`
+    : error.name
 }
 
 /**

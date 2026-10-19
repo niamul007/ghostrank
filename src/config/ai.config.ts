@@ -80,7 +80,8 @@ export const aiConfig: Record<Platform, PlatformConfig> = {
   },
   claude: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? "",
-    model: "claude-opus-4-8",
+    // Override with ANTHROPIC_MODEL in .env; falls back to claude-sonnet-5-5.
+    model: process.env.ANTHROPIC_MODEL?.trim() || "claude-sonnet-5-5",
     baseUrl: "https://api.anthropic.com",
     timeoutMs: 30_000,
   },

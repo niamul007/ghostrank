@@ -76,6 +76,14 @@ This starts the Vite dev server. It runs at http://localhost:5173 (Vite's defaul
 
 Neon free databases pause when idle, so the first request after a quiet period may be slow.
 
+### Tests
+
+```bash
+npm test
+```
+
+This runs a Vitest suite for the scorer, name detector, parser and text sanitizer. It needs no database, API key or environment variables.
+
 ## Environment variables
 
 From [.env.example](.env.example).
@@ -84,7 +92,7 @@ From [.env.example](.env.example).
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | Neon pooled connection string (host contains `-pooler`). Used by the app at runtime. |
 | `DIRECT_URL` | Yes | Neon direct (non-pooled) connection string. Used by Prisma migrations. |
-| `ACCESS_TOKEN_SECRET` | Yes | Secret used to sign JWT access tokens. Set it to a long random string. |
+| `ACCESS_TOKEN_SECRET` | Yes | Secret used to sign JWT access tokens. Must be at least 32 characters; the server refuses to start otherwise. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. |
 | `PORT` | No | Port the Express server listens on. Defaults to `4000`. |
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key used for scans. Without it, scans on the Claude platform fail and a warning is logged at startup. |
 | `ANTHROPIC_MODEL` | No | Claude model id. Defaults to `claude-sonnet-5-5`. |
@@ -141,13 +149,16 @@ frontend/
 - A scan is marked `FAILED` if every AI call fails, instead of saving a meaningless score.
 - Scan and report endpoints scope their queries to the logged-in agency's ID.
 - `ACTIVE_PLATFORMS` is one shared constant used by the prompt builder, scorer and report service, so enabling a provider is a single change.
-- Auth and client request bodies are validated with Zod.
+- Auth and client request bodies are validated with Zod. Registration requires a password of 8+ characters with at least one letter and one digit.
+- Route `id` parameters are validated (letters and digits only, 1-64 characters) before they reach a controller; invalid ids get a `400`.
+- Rate limiting: login allows 10 attempts per IP per 15 minutes, registration 5 per IP per hour, and starting a scan 10 per agency per hour.
+- The server checks `ACCESS_TOKEN_SECRET` at startup and refuses to start if it is shorter than 32 characters.
 
 ## Known limitations and next steps
 
 - Scans run inside the web process. There is no job queue, so a restart interrupts running scans.
-- No rate limiting.
-- No automated tests.
+- Tests cover the scorer, name detector, parser and text sanitizer only. There are no API or database tests.
+- A bare `#1 Name` list item is not recognized as a position; only `1.` style items are.
 - Only Claude is active. The other providers' code is paused.
 - Sentiment is keyword-based.
 - Reports are viewed in the web app only. There is no PDF or white-label output yet (the `Report` model has unused `pdfUrl` and `webUrl` fields).

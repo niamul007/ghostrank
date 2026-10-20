@@ -85,11 +85,11 @@ export async function runScan(payload: ScanJobPayload): Promise<void> {
     })
 
     // ── Step 2: Build prompts ─────────────────────
-    // Creates ~5 prompts × 3 platforms = ~15 BuiltPrompt objects
+    // Creates 5 prompts × 1 active platform = 5 BuiltPrompt objects
     const prompts = buildPrompts(payload)
 
     // ── Step 3: Query all AI platforms ────────────
-    // Sends all 15 prompts concurrently using Promise.allSettled
+    // Sends the prompts one at a time with a 2 second delay between calls
     // Returns AIResponse[] (raw text from each platform)
     const { responses, attempted, failures } = await queryAllPlatforms(prompts)
 

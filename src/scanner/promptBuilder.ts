@@ -9,7 +9,8 @@
 // but NOT when they ask "who should I see for teeth whitening in Miami?"
 // Each category tests a different search behavior.
 
-import type { BuiltPrompt, Platform, PromptCategory, ScanJobPayload } from "../types"
+import { ACTIVE_PLATFORMS } from "../config/ai.config"
+import type { BuiltPrompt, PromptCategory, ScanJobPayload } from "../types"
 
 /**
  * Prompt templates organized by category.
@@ -45,13 +46,6 @@ const PROMPT_TEMPLATES: Record<PromptCategory, string[]> = {
     "Have you heard of {name}? Are they a good {business}?",
   ],
 }
-
-/**
- * Platforms we scan against.
- * ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) — testing
- * against Claude only. Add them back here once they're re-enabled there.
- */
-const PLATFORMS: Platform[] = ["claude"]
 
 /**
  * Replaces template placeholders with actual business info.
@@ -93,13 +87,15 @@ function pickRandom<T>(arr: T[], count: number): T[] {
  * - Pick 1 from "comparison"
  * - Pick 1 from "discovery"
  * - Pick 1 from "specific" (uses the actual business name)
- * - Send each prompt to all 3 platforms
- * - Total: 5 prompts × 3 platforms = 15 API calls per scan
+ * - Send each prompt to every active platform (ACTIVE_PLATFORMS in ai.config.ts)
+ * - Total: 5 prompts × 1 active platform (Claude) = 5 API calls per scan
  *
- * Why 15?
+ * Why 5 prompts?
  * Enough data points to be statistically meaningful.
  * Not so many that API costs explode.
- * At ~$0.001 per gpt-4o-mini call, 15 calls ≈ $0.015 per scan.
+ *
+ * ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) — testing
+ * against Claude only. Adding them to ACTIVE_PLATFORMS multiplies the calls.
  */
 export function buildPrompts(payload: ScanJobPayload): BuiltPrompt[] {
   const prompts: BuiltPrompt[] = []
@@ -119,9 +115,9 @@ export function buildPrompts(payload: ScanJobPayload): BuiltPrompt[] {
     for (const template of selected) {
       const text = fillTemplate(template, payload)
 
-      // Same prompt goes to all 3 platforms — so we can compare
+      // Same prompt goes to every active platform — so we can compare
       // how each AI responds to the exact same question
-      for (const platform of PLATFORMS) {
+      for (const platform of ACTIVE_PLATFORMS) {
         prompts.push({
           text,
           platform,

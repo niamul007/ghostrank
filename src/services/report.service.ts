@@ -11,6 +11,7 @@
 
 import type { Prisma } from "@prisma/client"
 import { prisma } from "../lib/prisma"
+import { ACTIVE_PLATFORMS } from "../config/ai.config"
 import type { VisibilityScore, Platform } from "../types"
 import { AppError } from "../utils/AppError"
 
@@ -92,8 +93,8 @@ function generateRecommendations(
 
   // Platform-specific gaps
   // ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) —
-  // testing against Claude only. Add them back here once re-enabled there.
-  const platforms: Platform[] = ["claude"]
+  // ACTIVE_PLATFORMS in ai.config.ts lists what is currently scanned.
+  const platforms = ACTIVE_PLATFORMS
   for (const platform of platforms) {
     if (platformScores[platform] === 0) {
       const platformName =
@@ -206,8 +207,8 @@ function buildReportData(
 
   // Build platform breakdown
   // ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) —
-  // testing against Claude only. Add them back here once re-enabled there.
-  const platforms: Platform[] = ["claude"]
+  // ACTIVE_PLATFORMS in ai.config.ts lists what is currently scanned.
+  const platforms = ACTIVE_PLATFORMS
   const platformBreakdown = platforms.map((platform) => {
     const platformResults = scan.scanResults.filter(
       (r) => r.platform === platform

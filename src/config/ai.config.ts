@@ -88,6 +88,13 @@ export const aiConfig: Record<Platform, PlatformConfig> = {
 }
 
 /**
+ * Platforms that are actually scanned, scored and reported on.
+ * To enable another provider, add it here and uncomment its case in
+ * queryPlatform() in src/scanner/aiQuerier.ts.
+ */
+export const ACTIVE_PLATFORMS: Platform[] = ["claude"]
+
+/**
  * Checks that all required API keys are set in the environment.
  * Call this once at server startup — fail fast instead of
  * crashing mid-scan with a confusing auth error.

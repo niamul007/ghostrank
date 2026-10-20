@@ -14,6 +14,7 @@
 // 61-80: Strong — regularly mentioned, good positions
 // 81-100: Dominant — top recommendation across platforms
 
+import { ACTIVE_PLATFORMS } from "../config/ai.config"
 import type { ParsedScanResult, Platform, VisibilityScore } from "../types"
 
 /**
@@ -21,14 +22,14 @@ import type { ParsedScanResult, Platform, VisibilityScore } from "../types"
  *
  * Mention rate (40%): The most important factor.
  *   If you're not mentioned at all, nothing else matters.
- *   Mentioned in 10 out of 15 prompts = (10/15) × 40 = 26.7 points
+ *   Mentioned in 3 out of 5 prompts = (3/5) × 40 = 24 points
  *
  * Position quality (30%): Being mentioned first vs eighth matters.
  *   Position 1 = full points. Position 5+ = almost none.
  *   Average across all mentions.
  *
- * Platform coverage (15%): Showing up on all 3 platforms is better
- *   than showing up on just 1. Rewards breadth.
+ * Platform coverage (15%): Showing up on all active platforms is better
+ *   than showing up on just one. Rewards breadth.
  *
  * Sentiment bonus (15%): Positive mentions score higher.
  *   Getting recommended enthusiastically > just being listed.
@@ -50,7 +51,7 @@ const WEIGHTS = {
  * Calculates the mention rate score component.
  *
  * Simple ratio: mentions / total prompts × weight
- * 10 mentions out of 15 prompts = 0.667 × 40 = 26.7
+ * 3 mentions out of 5 prompts = 0.6 × 40 = 24
  */
 function calcMentionRate(results: ParsedScanResult[]): number {
   if (results.length === 0) return 0
@@ -105,9 +106,8 @@ function calcPositionQuality(results: ParsedScanResult[]): number {
 /**
  * Calculates the platform coverage score component.
  *
- * Visible on 3/3 platforms = full score
- * Visible on 2/3 = 66% of score
- * Visible on 1/3 = 33% of score
+ * Visible on every active platform = full score
+ * (with more than one active platform, the score scales with the share covered)
  *
  * Why does coverage matter?
  * Different people use different AI tools. A business visible
@@ -115,8 +115,8 @@ function calcPositionQuality(results: ParsedScanResult[]): number {
  */
 function calcPlatformCoverage(results: ParsedScanResult[]): number {
   // ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) —
-  // testing against Claude only. Add them back here once re-enabled there.
-  const platforms: Platform[] = ["claude"]
+  // ACTIVE_PLATFORMS in ai.config.ts lists what is currently scanned.
+  const platforms = ACTIVE_PLATFORMS
 
   let coveredCount = 0
 

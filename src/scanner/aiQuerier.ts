@@ -1,14 +1,15 @@
 // ──────────────────────────────────────────
 // GhostRank — AI Querier
 // ──────────────────────────────────────────
-// Sends prompts to ChatGPT, Perplexity, and Gemini
-// and captures their raw responses.
+// Sends prompts to the active AI platforms (Claude for now) and
+// captures their raw responses. ChatGPT, Perplexity and Gemini have
+// query functions here but are paused (see queryPlatform below).
 //
-// Why three platforms?
+// Why multiple platforms?
 // Each AI has different training data and search behavior.
 // A business might be visible on Perplexity (which searches the web)
 // but invisible on ChatGPT (which relies more on training data).
-// Checking all three gives the full picture.
+// Checking several gives the full picture.
 
 import OpenAI from "openai"
 import { GoogleGenerativeAI } from "@google/generative-ai"
@@ -17,13 +18,12 @@ import { AI_SYSTEM_PROMPT, aiConfig } from "../config/ai.config"
 import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types/index.ts"
 
 // ──────────────────────────────────────────
-// SDK Clients — initialized once, reused for all calls
+// SDK Clients — a new client is created on each call
 // ──────────────────────────────────────────
 
 /**
  * OpenAI client — used for ChatGPT calls.
- * We create it once here instead of creating a new one
- * for every API call. This is more efficient.
+ * Each call to this function builds a fresh client.
  */
 function getOpenAIClient(): OpenAI {
   return new OpenAI({
@@ -188,12 +188,12 @@ async function queryGemini(promptText: string): Promise<string> {
  * ephemeral` means the 2nd-5th calls in a scan can read it from cache
  * (~0.1x cost) instead of paying full input price every time — the 1st
  * call in each 5-minute window pays a one-time ~1.25x write instead.
- * Note: Anthropic enforces a minimum cacheable prefix (4096 tokens for
- * claude-opus-4-8) — this system prompt (~190 tokens) is well under that,
- * so on the current model cache_creation_input_tokens will read 0 (no
- * charge, no error, just no-op). The marker is harmless and starts paying
- * off the moment the system prompt grows or the model changes to one
- * with a lower minimum (e.g. Sonnet models cache from 1024 tokens).
+ * Note: Anthropic enforces a minimum cacheable prefix that varies by model
+ * (e.g. 1024 tokens for Sonnet models, 4096 for some others). This system
+ * prompt (~190 tokens) is under any of those minimums, so
+ * cache_creation_input_tokens will likely read 0 (no charge, no error, just
+ * no-op). The marker is harmless and starts paying off once the system
+ * prompt grows past the model's minimum.
  */
 async function queryClaude(
   promptText: string
@@ -283,21 +283,6 @@ export async function queryPlatform(
 }
 
 /**
- * Sends all prompts to their target platforms concurrently.
- *
- * Why Promise.allSettled instead of Promise.all?
- *
- * Promise.all: if ONE call fails, EVERYTHING fails. If Gemini is down,
- * you lose all 15 results — even the 10 successful ChatGPT/Perplexity ones.
- *
- * Promise.allSettled: each call succeeds or fails independently.
- * If Gemini is down, you still get ChatGPT and Perplexity results.
- * The scan is partial but still useful.
- *
- * This is a critical pattern for any app calling external APIs.
- * Never let one flaky service take down your whole operation.
- */
-/**
  * Small delay helper — waits for the given milliseconds.
  * Used to avoid hitting API rate limits.
  */
@@ -308,9 +293,10 @@ function delay(ms: number): Promise<void> {
 /**
  * Sends all prompts to their target platforms with rate limiting.
  *
- * Instead of firing all 15 calls at once (which hits rate limits),
- * we send them one by one with a small delay between each.
- * Slower but reliable.
+ * Instead of firing all calls at once (which hits rate limits),
+ * we send them one by one with a 2 second delay between each.
+ * Slower but reliable. Each call succeeds or fails independently (try/catch
+ * per prompt), so one failed call doesn't lose the other results.
  */
 export async function queryAllPlatforms(
   prompts: BuiltPrompt[]

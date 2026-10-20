@@ -24,6 +24,7 @@ import { queryAllPlatforms } from "../scanner/aiQuerier"
 import { parseAll } from "../scanner/parser"
 import { computeScore } from "../scorer"
 import type { ScanJobPayload } from "../types"
+import { AppError } from "../utils/AppError"
 
 /**
  * Creates a new scan record in the database.
@@ -181,9 +182,9 @@ export async function runScan(payload: ScanJobPayload): Promise<void> {
  * the individual results — you'd need a separate query.
  * This is called "eager loading" — grab everything at once.
  */
-export async function getScanById(scanId: string) {
-  return prisma.scan.findUnique({
-    where: { id: scanId },
+export async function getScanById(scanId: string, agencyId: string) {
+  return prisma.scan.findFirst({
+    where: { id: scanId, client: { agencyId } },
     include: {
       scanResults: true,
       client: true,
@@ -197,7 +198,15 @@ export async function getScanById(scanId: string) {
  * Used in the dashboard to show scan history:
  * "Jan scan: 12 → Feb scan: 28 → Mar scan: 45" — progress!
  */
-export async function getScansByClient(clientId: string) {
+export async function getScansByClient(clientId: string, agencyId: string) {
+  const client = await prisma.client.findFirst({
+    where: { id: clientId, agencyId },
+  })
+
+  if (!client) {
+    throw new AppError("Client not found", 404)
+  }
+
   return prisma.scan.findMany({
     where: { clientId },
     orderBy: { createdAt: "desc" },

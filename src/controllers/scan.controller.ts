@@ -12,6 +12,7 @@
 import { Request, Response, NextFunction } from "express"
 import { createScan, runScan, getScanById, getScansByClient } from "../services/scan.service"
 import { prisma } from "../lib/prisma"
+import { AppError } from "../utils/AppError"
 
 /**
  * POST /api/clients/:clientId/scans
@@ -38,17 +39,15 @@ export async function startScan(
   try {
     const clientId = req.params.clientId as string
 
-    // Verify client exists
-    const client = await prisma.client.findUnique({
-      where: { id: clientId },
+    const agencyId = req.user!.agencyId
+
+    // Verify client exists and belongs to this agency
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, agencyId },
     })
 
     if (!client) {
-      res.status(404).json({
-        status: "error",
-        message: "Client not found",
-      })
-      return
+      throw new AppError("Client not found", 404)
     }
 
     // Create the scan record
@@ -101,14 +100,12 @@ export async function getScan(
   try {
     const id = req.params.id as string
 
-    const scan = await getScanById(id)
+    const agencyId = req.user!.agencyId
+
+    const scan = await getScanById(id, agencyId)
 
     if (!scan) {
-      res.status(404).json({
-        status: "error",
-        message: "Scan not found",
-      })
-      return
+      throw new AppError("Scan not found", 404)
     }
 
     res.json({
@@ -134,7 +131,9 @@ export async function listScans(
   try {
     const clientId = req.params.clientId as string
 
-    const scans = await getScansByClient(clientId)
+    const agencyId = req.user!.agencyId
+
+    const scans = await getScansByClient(clientId, agencyId)
 
     res.json({
       status: "success",

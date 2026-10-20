@@ -11,6 +11,7 @@
 
 import { prisma } from "../lib/prisma"
 import type { VisibilityScore, Platform } from "../types"
+import { AppError } from "../utils/AppError"
 
 /**
  * The report structure that gets sent to the client.
@@ -147,17 +148,20 @@ function generateRecommendations(
  * 3. Save the report record to the database
  * 4. Return the structured report
  */
-export async function generateReport(scanId: string): Promise<ReportData> {
-  // Fetch scan with results and client
-  const scan = await prisma.scan.findUnique({
-    where: { id: scanId },
+export async function generateReport(
+  scanId: string,
+  agencyId: string
+): Promise<ReportData> {
+  // Fetch scan with results and client, scoped to this agency
+  const scan = await prisma.scan.findFirst({
+    where: { id: scanId, client: { agencyId } },
     include: {
       scanResults: true,
       client: true,
     },
   })
 
-  if (!scan) throw new Error(`Scan not found: ${scanId}`)
+  if (!scan) throw new AppError("Scan not found", 404)
   if (scan.status !== "COMPLETED") {
     throw new Error(`Scan is not completed. Current status: ${scan.status}`)
   }
@@ -230,9 +234,9 @@ export async function generateReport(scanId: string): Promise<ReportData> {
 /**
  * Gets an existing report by ID.
  */
-export async function getReportById(reportId: string) {
-  return prisma.report.findUnique({
-    where: { id: reportId },
+export async function getReportById(reportId: string, agencyId: string) {
+  return prisma.report.findFirst({
+    where: { id: reportId, client: { agencyId } },
     include: {
       scan: {
         include: {
@@ -247,7 +251,15 @@ export async function getReportById(reportId: string) {
 /**
  * Gets all reports for a client.
  */
-export async function getReportsByClient(clientId: string) {
+export async function getReportsByClient(clientId: string, agencyId: string) {
+  const client = await prisma.client.findFirst({
+    where: { id: clientId, agencyId },
+  })
+
+  if (!client) {
+    throw new AppError("Client not found", 404)
+  }
+
   return prisma.report.findMany({
     where: { clientId },
     orderBy: { createdAt: "desc" },

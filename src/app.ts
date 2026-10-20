@@ -5,12 +5,14 @@ import scanRoutes from "./routes/scan.routes"
 import reportRoutes from "./routes/report.routes"
 import { errorHandler } from "./middleware/errorHandler"
 import { validateAIConfig } from "./config/ai.config"
+import { validateAuthConfig } from "./config/auth.config"
 
 const app = express()
 
 app.use(express.json())
 
-// Check AI API keys on startup
+// Check auth secret and AI API keys on startup
+validateAuthConfig()
 validateAIConfig()
 
 app.get("/health", (_req, res) => {

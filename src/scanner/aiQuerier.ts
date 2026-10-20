@@ -15,7 +15,7 @@ import OpenAI from "openai"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import Anthropic from "@anthropic-ai/sdk"
 import { AI_SYSTEM_PROMPT, aiConfig } from "../config/ai.config"
-import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types/index.ts"
+import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types"
 
 // ──────────────────────────────────────────
 // SDK Clients — a new client is created on each call

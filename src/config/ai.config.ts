@@ -4,7 +4,7 @@
 // Centralized config for all AI API connections.
 // API keys come from .env — never hardcode them.
 
-import type { Platform } from "../types/index.ts";
+import type { Platform } from "../types";
 
 /**
  * Shared system prompt for every AI provider call (Claude for now;
@@ -48,7 +48,8 @@ interface PlatformConfig {
  *   just "who do you recommend?" — no need for gpt-4o.
  * - sonar: Perplexity's search-grounded model. It searches the web
  *   before answering, which is exactly how real users use Perplexity.
- * - gemini-2.0-flash: Google's fast, cheap model. Same logic as gpt-4o-mini.
+ * - gemini-2.0-flash-lite: Google's fast, cheap model. Same logic as gpt-4o-mini.
+ * - claude: defaults to claude-sonnet-5-5, overridable with ANTHROPIC_MODEL.
  *
  * Why 30 second timeout?
  * AI APIs can be slow under load. 30s is generous enough to avoid
@@ -57,7 +58,8 @@ interface PlatformConfig {
  * ChatGPT / Perplexity / Gemini calls are paused for now (see aiQuerier.ts) —
  * we're testing against Claude only until we have keys for the others.
  * Their config entries stay here so the Record<Platform, ...> type still
- * checks out and so re-enabling them later is a one-line uncomment.
+ * checks out. Re-enabling one means adding it to ACTIVE_PLATFORMS and
+ * uncommenting its case in queryPlatform().
  */
 export const aiConfig: Record<Platform, PlatformConfig> = {
   chatgpt: {
@@ -74,7 +76,7 @@ export const aiConfig: Record<Platform, PlatformConfig> = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? "",
-    model: "gemini-2.0-flash-lite", // ← change this line
+    model: "gemini-2.0-flash-lite",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     timeoutMs: 30_000,
   },

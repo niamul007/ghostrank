@@ -22,7 +22,41 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 })
 
-let currentToken: string | null = null
+const TOKEN_KEY = "ghostrank.token"
+const EMAIL_KEY = "ghostrank.email"
+
+/** sessionStorage can throw (blocked/unavailable) — every access is guarded. */
+export function loadStoredAuth(): { token: string | null; email: string | null } {
+  try {
+    return {
+      token: sessionStorage.getItem(TOKEN_KEY),
+      email: sessionStorage.getItem(EMAIL_KEY),
+    }
+  } catch {
+    return { token: null, email: null }
+  }
+}
+
+export function saveStoredAuth(token: string, email: string): void {
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token)
+    sessionStorage.setItem(EMAIL_KEY, email)
+  } catch {
+    // storage unavailable — session just won't survive a refresh
+  }
+}
+
+export function clearStoredAuth(): void {
+  try {
+    sessionStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(EMAIL_KEY)
+  } catch {
+    // nothing to clear if storage is unavailable
+  }
+}
+
+// Seeded from storage so the first request after a refresh sends the token.
+let currentToken: string | null = loadStoredAuth().token
 
 export function setAuthToken(token: string | null): void {
   currentToken = token
@@ -45,8 +79,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401 && unauthorizedHandler) {
-      unauthorizedHandler()
+    if (error.response?.status === 401) {
+      clearStoredAuth()
+      if (unauthorizedHandler) unauthorizedHandler()
     }
     return Promise.reject(error)
   }

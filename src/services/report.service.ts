@@ -9,6 +9,7 @@
 // can be rendered as a web page or PDF later.
 // PDF generation will come in v2.
 
+import type { Prisma } from "@prisma/client"
 import { prisma } from "../lib/prisma"
 import type { VisibilityScore, Platform } from "../types"
 import { AppError } from "../utils/AppError"
@@ -166,6 +167,39 @@ export async function generateReport(
     throw new Error(`Scan is not completed. Current status: ${scan.status}`)
   }
 
+  // Idempotent: reuse the existing report for this scan if there is one
+  const existing = await prisma.report.findFirst({
+    where: { scanId, client: { agencyId } },
+  })
+  if (existing) {
+    return buildReportData(scan, existing.id, existing.createdAt)
+  }
+
+  // Save report record to database
+  const report = await prisma.report.create({
+    data: {
+      scanId,
+      clientId: scan.clientId,
+    },
+  })
+
+  return buildReportData(scan, report.id, report.createdAt)
+}
+
+/** A scan loaded with its results and client, as needed to build a report. */
+type ScanWithResults = Prisma.ScanGetPayload<{
+  include: { scanResults: true; client: true }
+}>
+
+/**
+ * Builds the ReportData structure from an already loaded scan.
+ * Shared by generateReport and getReportById so both return the same shape.
+ */
+function buildReportData(
+  scan: ScanWithResults,
+  reportId: string,
+  createdAt: Date
+): ReportData {
   // Parse the raw results (visibility score)
   const rawScore = scan.rawResults as unknown as VisibilityScore
   const score = scan.score ?? 0
@@ -204,18 +238,10 @@ export async function generateReport(
     rawScore?.totalPrompts ?? 0
   )
 
-  // Save report record to database
-  const report = await prisma.report.create({
-    data: {
-      scanId,
-      clientId: scan.clientId,
-    },
-  })
-
   // Build the final report
   const reportData: ReportData = {
-    id: report.id,
-    generatedAt: new Date().toISOString(),
+    id: reportId,
+    generatedAt: createdAt.toISOString(),
     business: {
       name: scan.client.businessName,
       niche: scan.client.niche,
@@ -232,10 +258,14 @@ export async function generateReport(
 }
 
 /**
- * Gets an existing report by ID.
+ * Gets an existing report by ID, in the same shape generateReport returns.
+ * Returns null if the report doesn't exist or belongs to another agency.
  */
-export async function getReportById(reportId: string, agencyId: string) {
-  return prisma.report.findFirst({
+export async function getReportById(
+  reportId: string,
+  agencyId: string
+): Promise<ReportData | null> {
+  const report = await prisma.report.findFirst({
     where: { id: reportId, client: { agencyId } },
     include: {
       scan: {
@@ -246,6 +276,9 @@ export async function getReportById(reportId: string, agencyId: string) {
       },
     },
   })
+  if (!report) return null
+
+  return buildReportData(report.scan, report.id, report.createdAt)
 }
 
 /**

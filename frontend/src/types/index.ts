@@ -173,9 +173,8 @@ export interface StartScanResponse {
 // ──────────────────────────────────────────
 
 /**
- * What POST /api/scans/:scanId/report returns — a rich, fully computed
- * report (score label + recommendations included). NOT what the database
- * persists — see ReportRecord below.
+ * What POST /api/scans/:scanId/report and GET /api/reports/:id both return.
+ * Mirrors ReportData in the backend's src/services/report.service.ts.
  */
 export interface ReportData {
   id: string
@@ -202,22 +201,6 @@ export interface ReportData {
     sentiment: string | null
   }[]
   recommendations: string[]
-}
-
-/**
- * What GET /api/reports/:id actually returns: the raw `Report` row plus a
- * nested full `scan` (with scanResults + client). No scoreLabel, no
- * recommendations — those are computed at generation time and never
- * persisted. The frontend reconstructs an equivalent view from this.
- */
-export interface ReportRecord {
-  id: string
-  scanId: string
-  clientId: string
-  pdfUrl: string | null
-  webUrl: string | null
-  createdAt: string
-  scan: Scan
 }
 
 /** What GET /api/clients/:clientId/reports returns — scan is trimmed. */

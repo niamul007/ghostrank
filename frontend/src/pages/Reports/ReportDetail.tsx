@@ -9,7 +9,7 @@ import { PageSpinner } from "../../components/Spinner"
 import { IconArrowLeft } from "../../components/icons"
 import { getReport } from "../../api/reports"
 import { getErrorMessage } from "../../api/client"
-import { PLATFORM_LABEL, toReportView } from "../../lib/reportPresentation"
+import { PLATFORM_LABEL } from "../../lib/reportPresentation"
 import { formatDateTime } from "../../lib/format"
 import type { ReportData, SentimentLabel } from "../../types"
 
@@ -26,23 +26,22 @@ interface LocationState {
 export function ReportDetailPage() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
-  const passedReport = (location.state as LocationState | null)?.report
+  const stateReport = (location.state as LocationState | null)?.report
+  // Only trust router state if it is for the report in the URL.
+  const passedReport = stateReport?.id === id ? stateReport : undefined
 
   const [report, setReport] = useState<ReportData | null>(passedReport ?? null)
-  const [reconstructed, setReconstructed] = useState(!passedReport)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Freshly generated (came via navigation state from ScanDetail) — this
-    // already is the rich shape, no fetch needed.
+    // Came via navigation state from ScanDetail — already the full shape,
+    // no fetch needed. Direct URL / refresh falls through to GET.
     if (passedReport) return
     if (!id) return
 
     async function load() {
       try {
-        const record = await getReport(id!)
-        setReport(toReportView(record))
-        setReconstructed(true)
+        setReport(await getReport(id!))
       } catch (err) {
         setError(getErrorMessage(err))
       }
@@ -71,13 +70,6 @@ export function ReportDetailPage() {
         title={report.business.name}
         description={`${report.business.location} · generated ${formatDateTime(report.generatedAt)}`}
       />
-
-      {reconstructed ? (
-        <p className="mb-6 -mt-4 text-xs text-text-faint">
-          Reconstructed from stored scan data — recommendations are recomputed client-side since the
-          API doesn't persist them on the report record.
-        </p>
-      ) : null}
 
       <Card className="mb-6 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <ScoreMeter score={report.score} size="lg" />

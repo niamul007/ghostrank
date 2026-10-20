@@ -72,7 +72,7 @@ npm install
 npm run dev
 ```
 
-This starts the Vite dev server, which uses Vite's default port because none is set in `vite.config.ts`. The dev server proxies `/api` to `http://localhost:4000`, so start the backend first.
+This starts the Vite dev server. It runs at http://localhost:5173 (Vite's default port). The dev server proxies `/api` to `http://localhost:4000`, so start the backend first.
 
 Neon free databases pause when idle, so the first request after a quiet period may be slow.
 
@@ -84,7 +84,7 @@ From [.env.example](.env.example).
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | Neon pooled connection string (host contains `-pooler`). Used by the app at runtime. |
 | `DIRECT_URL` | Yes | Neon direct (non-pooled) connection string. Used by Prisma migrations. |
-| `ACCESS_TOKEN_SECRET` | Yes | Secret used to sign JWT access tokens. Replace the example value with a long random string. |
+| `ACCESS_TOKEN_SECRET` | Yes | Secret used to sign JWT access tokens. Set it to a long random string. |
 | `PORT` | No | Port the Express server listens on. Defaults to `4000`. |
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key used for scans. Without it, scans on the Claude platform fail and a warning is logged at startup. |
 | `ANTHROPIC_MODEL` | No | Claude model id. Defaults to `claude-sonnet-5-5`. |

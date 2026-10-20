@@ -94,7 +94,7 @@ export function RegisterPage() {
           value={values.password}
           onChange={(e) => setField("password", e.target.value)}
           error={errors.password}
-          hint={!errors.password ? "At least 6 characters" : undefined}
+          hint={!errors.password ? "At least 8 characters, with a letter and a digit" : undefined}
         />
         <Input
           label="Confirm password"

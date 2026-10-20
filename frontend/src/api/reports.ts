@@ -1,15 +1,15 @@
 import { api } from "./client"
-import type { ApiSuccess, ReportData, ReportListItem, ReportRecord } from "../types"
+import type { ApiSuccess, ReportData, ReportListItem } from "../types"
 
-/** Rich, freshly-computed report — scoreLabel + recommendations included. */
+/** Generates (or reuses) the report for a completed scan. */
 export async function createReport(scanId: string): Promise<ReportData> {
   const res = await api.post<ApiSuccess<ReportData>>(`/api/scans/${scanId}/report`)
   return res.data.data
 }
 
-/** Raw persisted row — see ReportRecord for what's missing vs createReport(). */
-export async function getReport(id: string): Promise<ReportRecord> {
-  const res = await api.get<ApiSuccess<ReportRecord>>(`/api/reports/${id}`)
+/** Loads an existing report — same ReportData shape as createReport(). */
+export async function getReport(id: string): Promise<ReportData> {
+  const res = await api.get<ApiSuccess<ReportData>>(`/api/reports/${id}`)
   return res.data.data
 }
 

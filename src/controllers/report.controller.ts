@@ -4,6 +4,7 @@
 
 import { Request, Response, NextFunction } from "express"
 import { generateReport, getReportById, getReportsByClient } from "../services/report.service"
+import { AppError } from "../utils/AppError"
 
 /**
  * POST /api/scans/:scanId/report
@@ -20,7 +21,9 @@ export async function createReport(
   try {
     const scanId = req.params.scanId as string
 
-    const report = await generateReport(scanId)
+    const agencyId = req.user!.agencyId
+
+    const report = await generateReport(scanId, agencyId)
 
     res.status(201).json({
       status: "success",
@@ -44,14 +47,12 @@ export async function getReport(
   try {
     const id = req.params.id as string
 
-    const report = await getReportById(id)
+    const agencyId = req.user!.agencyId
+
+    const report = await getReportById(id, agencyId)
 
     if (!report) {
-      res.status(404).json({
-        status: "error",
-        message: "Report not found",
-      })
-      return
+      throw new AppError("Report not found", 404)
     }
 
     res.json({
@@ -76,7 +77,9 @@ export async function listReports(
   try {
     const clientId = req.params.clientId as string
 
-    const reports = await getReportsByClient(clientId)
+    const agencyId = req.user!.agencyId
+
+    const reports = await getReportsByClient(clientId, agencyId)
 
     res.json({
       status: "success",

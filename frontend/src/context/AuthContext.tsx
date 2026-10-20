@@ -1,10 +1,8 @@
 // ──────────────────────────────────────────
 // GhostRank — Auth context
 // ──────────────────────────────────────────
-// Token lives in React state only (per spec: memory, not localStorage) —
-// a hard refresh logs the user out. That's a deliberate tradeoff of the
-// "in memory" requirement, not a bug: there's nowhere else to recover the
-// token from after a reload.
+// Token lives in React state, mirrored to sessionStorage (token + email) so
+// a refresh keeps the session. sessionStorage is cleared when the tab closes.
 //
 // The backend has no "get current user" endpoint (see the endpoint audit
 // in the chat) — the JWT payload only carries agencyId + role, no name or
@@ -22,7 +20,13 @@ import {
   type ReactNode,
 } from "react"
 import { login as loginRequest } from "../api/auth"
-import { setAuthToken, setUnauthorizedHandler } from "../api/client"
+import {
+  clearStoredAuth,
+  loadStoredAuth,
+  saveStoredAuth,
+  setAuthToken,
+  setUnauthorizedHandler,
+} from "../api/client"
 import { decodeJwt, isExpired } from "../lib/jwt"
 import type { AgencyRole } from "../types"
 
@@ -47,8 +51,17 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null)
-  const [identity, setIdentity] = useState<Identity | null>(null)
+  // Restored synchronously (lazy initializers) so the first render of a
+  // protected route already sees the session — no login-page flash.
+  const [token, setToken] = useState<string | null>(() => {
+    const stored = loadStoredAuth().token
+    setAuthToken(stored)
+    return stored
+  })
+  const [identity, setIdentity] = useState<Identity | null>(() => {
+    const { token: storedToken, email } = loadStoredAuth()
+    return storedToken && email ? { email } : null
+  })
   // Gate rendering for one tick so the 401 handler is registered before any
   // route can fire a request — avoids a race on first paint.
   const [isReady, setIsReady] = useState(false)
@@ -57,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null)
     setAuthToken(null)
     setIdentity(null)
+    clearStoredAuth()
   }, [])
 
   useEffect(() => {
@@ -68,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accessToken = await loginRequest({ email, password })
     setAuthToken(accessToken)
     setToken(accessToken)
+    saveStoredAuth(accessToken, email)
     // Login doesn't return the agency — keep the email the user just typed
     // so the top bar has something to show.
     setIdentity((prev) => (prev && prev.email === email ? prev : { email }))

@@ -190,6 +190,46 @@ function scoreWindow(businessWords: WeightedWord[], windowWords: string[]): numb
   return totalWeight === 0 ? 0 : weightedSum / totalWeight
 }
 
+const SCORE_EPSILON = 1e-9
+
+/**
+ * Index range (inclusive) of the window words that matched a business word:
+ * for each business word, its most similar window word, kept only if it is
+ * at least a fuzzy match. If nothing qualifies, falls back to the single
+ * most similar word so the range is never empty.
+ */
+function matchedTokenRange(
+  businessWords: WeightedWord[],
+  windowWords: string[]
+): { first: number; last: number } {
+  let first = Infinity
+  let last = -1
+  let fallbackIndex = 0
+  let fallbackSim = -1
+
+  for (const { word } of businessWords) {
+    let bestIndex = 0
+    let bestSim = -1
+    for (let j = 0; j < windowWords.length; j++) {
+      const sim = similarity(word, windowWords[j]!)
+      if (sim > bestSim) {
+        bestSim = sim
+        bestIndex = j
+      }
+    }
+    if (bestSim >= FUZZY_THRESHOLD) {
+      first = Math.min(first, bestIndex)
+      last = Math.max(last, bestIndex)
+    }
+    if (bestSim > fallbackSim) {
+      fallbackSim = bestSim
+      fallbackIndex = bestIndex
+    }
+  }
+
+  return last === -1 ? { first: fallbackIndex, last: fallbackIndex } : { first, last }
+}
+
 export interface MatchCandidate {
   strength: MatchStrength
   /** 0..1 similarity score of the best-matching window against the business name. */
@@ -230,15 +270,26 @@ export function findBestMatch(responseText: string, businessName: string): Match
     const windowWords = windowTokens.map((t) => t.text.toLowerCase())
     const score = scoreWindow(businessWords, windowWords)
 
-    if (!best || score > best.score) {
-      const firstToken = windowTokens[0]!
-      const lastToken = windowTokens[windowTokens.length - 1]!
+    // Narrow the window to the tokens that actually matched a business
+    // word, so slack tokens (e.g. the end of the previous list item) never
+    // end up inside the reported match.
+    const { first, last } = matchedTokenRange(businessWords, windowWords)
+    const start = windowTokens[first]!.start
+    const end = windowTokens[last]!.end
+
+    // Ties go to the narrowest span; strict comparisons keep the earliest.
+    const better =
+      !best ||
+      score > best.score + SCORE_EPSILON ||
+      (Math.abs(score - best.score) <= SCORE_EPSILON && end - start < best.end - best.start)
+
+    if (better) {
       best = {
         strength: classifyMatch(score),
         score,
-        matchedText: responseText.slice(firstToken.start, lastToken.end),
-        start: firstToken.start,
-        end: lastToken.end,
+        matchedText: responseText.slice(start, end),
+        start,
+        end,
       }
     }
   }
@@ -256,17 +307,27 @@ interface Sentence {
   end: number
 }
 
-/** Splits on sentence-ending punctuation, keeping offsets into the original text. */
-function splitSentences(text: string): Sentence[] {
+/**
+ * Splits on sentence-ending punctuation, keeping offsets into the original
+ * text (shifted by `offset` when `text` is a slice of a larger string). A
+ * leading list marker ("1.", "2)", "-", "*", "#") is never a sentence end.
+ */
+function splitSentences(text: string, offset = 0): Sentence[] {
   const sentences: Sentence[] = []
-  const re = /[^.!?]+(?:[.!?]+|$)/g
+  const re = /(?:^[ \t]*(?:\d+[.)]|[-*#]+)[ \t]*)?[^.!?]+(?:[.!?]+|$)/g
   let match: RegExpExecArray | null
   while ((match = re.exec(text)) !== null) {
     if (match[0].trim().length === 0) continue
-    sentences.push({ text: match[0], start: match.index, end: match.index + match[0].length })
+    sentences.push({
+      text: match[0],
+      start: offset + match.index,
+      end: offset + match.index + match[0].length,
+    })
   }
   return sentences
 }
+
+const MAX_LINE_CONTEXT = 300
 
 /**
  * Pulls the sentence containing the match so callers can see HOW the
@@ -275,7 +336,21 @@ function splitSentences(text: string): Sentence[] {
  * opening line shouldn't bleed into our client's sentiment.
  */
 export function extractContext(responseText: string, match: MatchCandidate): string {
-  const sentences = splitSentences(responseText)
+  // Lists: a numbered/bulleted item is the unit of context, not the "1."
+  // that sentence splitting would otherwise cut it down to.
+  let sentenceSource = responseText
+  let sentenceOffset = 0
+  if (responseText.includes("\n")) {
+    const lineStart = responseText.lastIndexOf("\n", match.start - 1) + 1
+    const nextBreak = responseText.indexOf("\n", match.start)
+    const lineEnd = nextBreak === -1 ? responseText.length : nextBreak
+    const line = responseText.slice(lineStart, lineEnd).trim()
+    if (line.length > 0 && line.length <= MAX_LINE_CONTEXT) return line
+    sentenceSource = responseText.slice(lineStart, lineEnd)
+    sentenceOffset = lineStart
+  }
+
+  const sentences = splitSentences(sentenceSource, sentenceOffset)
   const containing = sentences.find((s) => match.start >= s.start && match.start < s.end)
 
   if (containing) {

@@ -75,7 +75,12 @@ function fillTemplate(
  * Randomizing gives better coverage over time (across monthly scans).
  */
 function pickRandom<T>(arr: T[], count: number): T[] {
-  const shuffled = [...arr].sort(() => Math.random() - 0.5)
+  const shuffled = [...arr]
+  // Fisher-Yates: every ordering is equally likely
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
   return shuffled.slice(0, count)
 }
 

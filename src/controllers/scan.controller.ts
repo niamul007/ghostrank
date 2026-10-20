@@ -26,8 +26,8 @@ import { AppError } from "../utils/AppError"
  * 4. Return the scan ID immediately
  *
  * Why not wait for the scan to finish?
- * A scan takes 30-60 seconds (5 API calls, 2 seconds apart).
- * If we waited, the HTTP request would hang for a full minute.
+ * A scan takes a while (5 API calls, 2 seconds apart).
+ * If we waited, the HTTP request would hang until the scan finished.
  * Instead we return immediately and let it run in the background.
  * The agency can poll GET /api/scans/:id to check progress.
  */

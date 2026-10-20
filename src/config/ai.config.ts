@@ -107,9 +107,9 @@ export const ACTIVE_PLATFORMS: Platform[] = ["claude"]
 export function validateAIConfig(): { valid: boolean; missing: Platform[] } {
   const missing: Platform[] = [];
 
-  for (const [platform, config] of Object.entries(aiConfig)) {
-    if (!config.apiKey) {
-      missing.push(platform as Platform);
+  for (const platform of ACTIVE_PLATFORMS) {
+    if (!aiConfig[platform].apiKey) {
+      missing.push(platform);
     }
   }
 

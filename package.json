@@ -1,5 +1,5 @@
 {
-  "name": "backend-starter",
+  "name": "ghostrank",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,21 +11,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/niamul007/backend-starter.git"
+    "url": "git+https://github.com/niamul007/ghostrank.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/niamul007/backend-starter/issues"
+    "url": "https://github.com/niamul007/ghostrank/issues"
   },
-  "homepage": "https://github.com/niamul007/backend-starter#readme",
+  "homepage": "https://github.com/niamul007/ghostrank#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "6.19.3",
     "bcrypt": "^6.0.0",
-    "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
@@ -34,7 +33,6 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
-    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.9.1",

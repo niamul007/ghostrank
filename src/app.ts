@@ -1,5 +1,4 @@
 import express from "express"
-import cookieParser from "cookie-parser"
 import authRoutes from "./routes/auth.routes"
 import clientRoutes from "./routes/client.routes"
 import scanRoutes from "./routes/scan.routes"
@@ -10,7 +9,6 @@ import { validateAIConfig } from "./config/ai.config"
 const app = express()
 
 app.use(express.json())
-app.use(cookieParser())
 
 // Check AI API keys on startup
 validateAIConfig()

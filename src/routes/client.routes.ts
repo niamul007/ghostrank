@@ -12,6 +12,7 @@ import {
 } from "../controllers/client.controller"
 import { authenticate } from "../middleware/auth"
 import { validate } from "../middleware/validate"
+import { validateParams } from "../middleware/validateParams"
 import { createClientSchema, updateClientSchema } from "../schemas/client.schema"
 
 const router = Router()
@@ -21,8 +22,8 @@ router.use(authenticate)
 
 router.post("/", validate(createClientSchema), createClient)
 router.get("/", listClients)
-router.get("/:id", getClient)
-router.patch("/:id", validate(updateClientSchema), updateClient)
-router.delete("/:id", deleteClient)
+router.get("/:id", validateParams("id"), getClient)
+router.patch("/:id", validateParams("id"), validate(updateClientSchema), updateClient)
+router.delete("/:id", validateParams("id"), deleteClient)
 
 export default router

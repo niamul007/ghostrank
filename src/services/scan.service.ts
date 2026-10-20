@@ -175,6 +175,23 @@ export async function runScan(payload: ScanJobPayload): Promise<void> {
 }
 
 /**
+ * Marks scans left PENDING or RUNNING as FAILED.
+ *
+ * Scans run inside the web process, so a server restart orphans them.
+ * Called once on startup. Returns the number of scans updated.
+ */
+export async function failOrphanedScans(): Promise<number> {
+  const result = await prisma.scan.updateMany({
+    where: { status: { in: [ScanStatus.PENDING, ScanStatus.RUNNING] } },
+    data: {
+      status: ScanStatus.FAILED,
+      errorMsg: "Scan interrupted by a server restart",
+    },
+  })
+  return result.count
+}
+
+/**
  * Gets a single scan by ID with all its results.
  *
  * The `include` tells Prisma to also fetch related ScanResults

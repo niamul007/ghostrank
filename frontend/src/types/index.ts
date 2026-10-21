@@ -172,6 +172,8 @@ export interface StartScanResponse {
 // Reports
 // ──────────────────────────────────────────
 
+export type ResultIssue = "not_mentioned" | "low_position" | "negative" | "ok"
+
 /**
  * What POST /api/scans/:scanId/report and GET /api/reports/:id both return.
  * Mirrors ReportData in the backend's src/services/report.service.ts.
@@ -199,6 +201,10 @@ export interface ReportData {
     mentioned: boolean
     position: number | null
     sentiment: string | null
+    answerExcerpt: string
+    competitors: string[]
+    issue: ResultIssue
+    fix: string | null
   }[]
   recommendations: string[]
 }

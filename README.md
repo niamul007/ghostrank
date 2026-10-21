@@ -126,7 +126,7 @@ src/
   config/       AI platform config, ACTIVE_PLATFORMS
   controllers/  Request handlers
   lib/          Prisma client
-  middleware/   Auth, validation, error handler
+  middleware/   Auth, validation, rate limiting, param validation, error handler
   routes/       Express route definitions
   scanner/      Prompt builder, AI querier, name detector, response parser
   schemas/      Zod schemas for auth and clients
@@ -134,6 +134,7 @@ src/
   services/     Scan orchestration and report building
   types/        Shared types
   utils/        Token generation, text sanitizing, AppError
+tests/          Vitest tests for the scorer, detector, parser and sanitizer
 prisma/         Schema and migrations
 frontend/
   src/api/        Axios API modules

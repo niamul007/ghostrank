@@ -17,6 +17,9 @@ import Anthropic from "@anthropic-ai/sdk"
 import { AI_SYSTEM_PROMPT, aiConfig } from "../config/ai.config"
 import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types"
 
+// Output cap for Claude answers; the system prompt asks for short lists, so this is ample.
+const CLAUDE_MAX_TOKENS = 500
+
 // ──────────────────────────────────────────
 // SDK Clients — a new client is created on each call
 // ──────────────────────────────────────────
@@ -202,7 +205,7 @@ async function queryClaude(
 
   const response = await client.messages.create({
     model: aiConfig.claude.model,
-    max_tokens: 1024,
+    max_tokens: CLAUDE_MAX_TOKENS,
     system: [
       {
         type: "text",
@@ -212,6 +215,10 @@ async function queryClaude(
     ],
     messages: [{ role: "user", content: promptText }],
   })
+
+  if (response.stop_reason === "max_tokens") {
+    console.warn("Claude answer hit max_tokens (possible truncation)")
+  }
 
   const textBlock = response.content.find((block) => block.type === "text")
 

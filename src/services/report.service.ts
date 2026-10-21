@@ -14,6 +14,13 @@ import { prisma } from "../lib/prisma"
 import { ACTIVE_PLATFORMS } from "../config/ai.config"
 import type { VisibilityScore, Platform } from "../types"
 import { AppError } from "../utils/AppError"
+import {
+  classifyIssue,
+  findCompetitors,
+  getFix,
+  makeExcerpt,
+  type ResultIssue,
+} from "./reportDetail"
 
 /**
  * The report structure that gets sent to the client.
@@ -47,6 +54,13 @@ export interface ReportData {
     mentioned: boolean
     position: number | null
     sentiment: string | null
+    /** Saved response text, trimmed and cut to 600 characters */
+    answerExcerpt: string
+    /** Up to 5 other business names found in the response */
+    competitors: string[]
+    issue: ResultIssue
+    /** Suggested fix by (category, issue); null when issue is "ok" */
+    fix: string | null
   }[]
   /** Actionable recommendations based on the score */
   recommendations: string[]
@@ -222,14 +236,21 @@ function buildReportData(
   })
 
   // Build results list
-  const results = scan.scanResults.map((r) => ({
-    prompt: r.prompt,
-    platform: r.platform,
-    category: r.category,
-    mentioned: r.mentioned,
-    position: r.position,
-    sentiment: r.sentiment,
-  }))
+  const results = scan.scanResults.map((r) => {
+    const issue = classifyIssue(r)
+    return {
+      prompt: r.prompt,
+      platform: r.platform,
+      category: r.category,
+      mentioned: r.mentioned,
+      position: r.position,
+      sentiment: r.sentiment,
+      answerExcerpt: makeExcerpt(r.response),
+      competitors: findCompetitors(r.response, scan.client.businessName),
+      issue,
+      fix: getFix(r.category, issue),
+    }
+  })
 
   // Generate recommendations
   const recommendations = generateRecommendations(

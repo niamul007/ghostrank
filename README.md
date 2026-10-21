@@ -11,7 +11,7 @@ GhostRank checks how often and how well AI assistants recommend a local business
 5. Each response is parsed: fuzzy name matching decides whether the business was mentioned, then list position and keyword-based sentiment are extracted.
 6. The scorer combines the parsed results into a 0-100 score.
 7. Results are saved (score, per-prompt `ScanResult` rows) and the scan is marked `COMPLETED`. If every AI call fails, or anything unexpected throws, the scan is marked `FAILED` instead.
-8. The frontend polls `GET /api/scans/:id` every 3 seconds while the scan is pending or running. Once it completes, a report can be generated from the scan (`POST /api/scans/:scanId/report`) and viewed on the report page.
+8. The frontend polls `GET /api/scans/:id` every 3 seconds while the scan is pending or running. Once it completes, a report can be generated from the scan (`POST /api/scans/:scanId/report`) and viewed on the report page. Each prompt result in the report includes the saved AI answer (trimmed to 600 characters), the other businesses found in it, an issue label (not mentioned, low position, negative or ok) and a general improvement suggestion chosen by rule from the prompt category and the issue. No extra AI calls are made for this.
 
 ## Scoring
 
@@ -140,7 +140,7 @@ src/
   scanner/      Prompt builder, AI querier, name detector, response parser
   schemas/      Zod schemas for auth and clients
   scorer/       Score calculation
-  services/     Scan orchestration and report building
+  services/     Scan orchestration, report building, per-prompt report detail (reportDetail.ts)
   types/        Shared types
   utils/        Token generation, text sanitizing, AppError
 tests/          Vitest tests for the scorer, detector, parser and sanitizer
@@ -162,6 +162,7 @@ frontend/
 - Auth and client request bodies are validated with Zod. Registration requires a password of 8+ characters with at least one letter and one digit.
 - Route `id` parameters are validated (letters and digits only, 1-64 characters) before they reach a controller; invalid ids get a `400`.
 - Rate limiting: login allows 10 attempts per IP per 15 minutes, registration 5 per IP per hour, and starting a scan 10 per agency per hour.
+- Per-prompt report detail (answer excerpt, other businesses, issue label, suggestion) is computed from the saved scan results when the report is built, with no extra AI calls.
 - The server checks `ACCESS_TOKEN_SECRET` at startup and refuses to start if it is shorter than 32 characters.
 
 ## Known limitations and next steps
@@ -172,6 +173,10 @@ frontend/
 - Only Claude is active. The other providers' code is paused.
 - Sentiment is keyword-based.
 - Reports are viewed in the web app only. There is no PDF or white-label output yet (the `Report` model has unused `pdfUrl` and `webUrl` fields).
+- Competitor names come from a text heuristic that reads line-leading names, so unusual answer formats can be missed.
+- The same business can appear twice under different suffixes (for example "Hospitals" and "Hospitals Ltd").
+- A renamed business can appear in its own competitor list.
+- The improvement suggestions are general rules, not advice tailored to the business.
 - The access token is kept in `sessionStorage` and expires after 15 minutes. There is no refresh token.
 
 ## Screenshots

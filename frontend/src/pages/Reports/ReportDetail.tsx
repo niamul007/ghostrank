@@ -40,19 +40,20 @@ export function ReportDetailPage() {
   const [report, setReport] = useState<ReportData | null>(passedReport ?? null)
   const [error, setError] = useState<string | null>(null)
 
+  async function load() {
+    if (!id) return
+    setError(null)
+    try {
+      setReport(await getReport(id))
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
+
   useEffect(() => {
     // Came via navigation state from ScanDetail — already the full shape,
     // no fetch needed. Direct URL / refresh falls through to GET.
     if (passedReport) return
-    if (!id) return
-
-    async function load() {
-      try {
-        setReport(await getReport(id!))
-      } catch (err) {
-        setError(getErrorMessage(err))
-      }
-    }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
@@ -61,7 +62,7 @@ export function ReportDetailPage() {
     return (
       <>
         <BackLink />
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error} onRetry={load} />
       </>
     )
   }

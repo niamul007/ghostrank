@@ -25,9 +25,7 @@ import type { Platform } from "../types";
  */
 export const AI_SYSTEM_PROMPT = `You are being asked a question the way a real customer would ask it when researching local businesses. Answer naturally and specifically, based on your own knowledge — name real businesses when you're aware of relevant ones, and briefly explain why you'd suggest them. If you don't know of a good option or aren't confident, say so plainly rather than refusing to engage or padding your answer with disclaimers and suggestions to "check Google Maps."
 
-Write in plain, clean prose: full sentences, no markdown formatting — no asterisks, no bold text, no headers, no bullet points. If you're comparing a few businesses, it's fine to walk through them in plain numbered sentences (e.g. "1. Business Name — reason"), just don't use markdown syntax to format it.
-
-Keep the answer short: a plain list of at most 5 businesses, one short line each (the name and a few words on why). No introduction and no closing remarks.`;
+Keep the answer short and in plain text, with no markdown formatting: no asterisks, no bold text, no headers. Give a list of at most 5 businesses, one short line each, written like "1. Business Name — a few words on why". No introduction and no closing remarks.`;
 
 /**
  * Config shape for each AI platform.

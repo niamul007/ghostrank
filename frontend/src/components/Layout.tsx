@@ -1,5 +1,5 @@
-import type { ReactNode } from "react"
-import { NavLink, useNavigate } from "react-router-dom"
+import { useEffect, useRef, type ReactNode } from "react"
+import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import {
   GhostMark,
@@ -20,6 +20,13 @@ const NAV_ITEMS = [
 export function Layout({ children }: { children: ReactNode }) {
   const { identity, agencyId, logout } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const scrollRef = useRef<HTMLElement>(null)
+
+  // The window no longer scrolls on desktop, so reset the content scroller on navigation.
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0)
+  }, [pathname])
 
   function handleLogout() {
     logout()
@@ -30,17 +37,17 @@ export function Layout({ children }: { children: ReactNode }) {
   const initial = displayName.trim().charAt(0).toUpperCase() || "?"
 
   return (
-    <div className="flex min-h-screen bg-bg">
+    <div className="flex min-h-screen bg-bg sm:h-screen sm:supports-[height:100dvh]:h-dvh sm:min-h-0 sm:overflow-hidden">
       {/* ── Sidebar ─────────────────────────────────────────── */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface sm:flex">
-        <div className="flex items-center gap-2.5 px-5 py-6">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface sm:flex sm:min-h-0">
+        <div className="flex shrink-0 items-center gap-2.5 px-5 py-6">
           <GhostMark className="h-7 w-7 text-accent" />
           <span className="font-display text-[17px] font-semibold tracking-tight text-text">
             GhostRank
           </span>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 px-3">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
           {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -60,7 +67,7 @@ export function Layout({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="border-t border-border-soft p-3">
+        <div className="shrink-0 border-t border-border-soft p-3">
           <button
             type="button"
             onClick={handleLogout}
@@ -73,8 +80,8 @@ export function Layout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* ── Main column ─────────────────────────────────────── */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between gap-4 border-b border-border px-5 py-3.5 sm:px-8">
+      <div className="flex min-w-0 flex-1 flex-col sm:min-h-0">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-3.5 sm:px-8">
           <div className="flex items-center gap-2.5 sm:hidden">
             <GhostMark className="h-6 w-6 text-accent" />
             <span className="font-display text-sm font-semibold text-text">GhostRank</span>
@@ -91,7 +98,10 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-5 py-8 pb-24 sm:px-8 sm:pb-8">
+        <main
+          ref={scrollRef}
+          className="flex-1 px-5 py-8 pb-24 sm:min-h-0 sm:overflow-y-auto sm:px-8 sm:pb-8"
+        >
           <div className="mx-auto w-full max-w-5xl">{children}</div>
         </main>
       </div>

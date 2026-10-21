@@ -4,8 +4,6 @@
 // Per-prompt detail for reports, computed from saved ScanResult rows
 // only (no AI calls). Kept free of database imports so it is easy to test.
 
-import { extractAlternatives } from "../scanner/detector"
-
 export type ResultIssue = "not_mentioned" | "low_position" | "negative" | "ok"
 
 /** Mentioned at this position or lower (4, 5, ...) counts as "low_position". */
@@ -78,14 +76,84 @@ export function getFix(category: string, issue: ResultIssue): string | null {
   return FIX_SUGGESTIONS[issue][toFixCategory(category)]
 }
 
-/** Trims the response and cuts it to ANSWER_EXCERPT_MAX characters, "..." included. */
+/** Trims the response and cuts it to ANSWER_EXCERPT_MAX characters, "..." included, at a word boundary. */
 export function makeExcerpt(response: string): string {
   const text = response.trim()
   if (text.length <= ANSWER_EXCERPT_MAX) return text
-  return text.slice(0, ANSWER_EXCERPT_MAX - 3).trimEnd() + "..."
+  const limit = ANSWER_EXCERPT_MAX - 3
+  let cut = text.slice(0, limit)
+  // If the cut lands inside a word, back up to the last whitespace before it.
+  if (!/\s/.test(text[limit])) {
+    const lastSpace = cut.search(/\s\S*$/)
+    if (lastSpace > 0) cut = cut.slice(0, lastSpace)
+  }
+  return cut.trimEnd() + "..."
 }
 
-/** Other business names found in the saved response (best-effort heuristic). */
+/** Last words that mark a topic heading rather than a business name. */
+const GENERIC_LAST_WORDS = new Set([
+  "disease", "diseases", "medicine", "care", "services", "service",
+  "treatment", "treatments", "specialties", "specialty", "conditions",
+  "disorders", "options", "tips", "benefits",
+])
+
+/** Words that open a heading like "Top options" or "Best Hospitals" rather than a name. */
+const HEADING_FIRST_WORDS = new Set([
+  "top", "best", "popular", "leading", "recommended", "other", "here",
+  "some", "these", "following", "common",
+])
+
+const NAME_SEPARATOR = / — | – | - |:|\(/
+
+/**
+ * Other business names found in the saved response. Only line-leading names
+ * are kept (list items, or paragraphs that start with a name followed by a
+ * dash, colon or bracket).
+ */
 export function findCompetitors(response: string, businessName: string): string[] {
-  return extractAlternatives(response, businessName, MAX_COMPETITORS)
+  const own = businessName.trim().toLowerCase()
+  const seen = new Set<string>()
+  const results: string[] = []
+
+  for (const rawLine of response.split(/\r?\n/)) {
+    if (results.length >= MAX_COMPETITORS) break
+
+    let line = rawLine.trim()
+    let prev: string
+    do {
+      prev = line
+      line = line.replace(/^(?:\d+[.)]|[-*#]+)\s*/, "")
+    } while (line !== prev)
+    line = line.replace(/[*_]/g, "")
+
+    // A line that itself ends with ":" is a heading ("Best Hospitals:"), not a name.
+    if (line.trimEnd().endsWith(":")) continue
+
+    const sep = line.search(NAME_SEPARATOR)
+    const name = (sep === -1 ? line : line.slice(0, sep)).trim()
+
+    const words = name.split(/\s+/)
+    // Heading rule: exactly 2 words starting with a heading word ("Top options")
+    // is dropped; 3+ words ("Popular Diagnostic Centre") is treated as a real name.
+    if (words.length === 2 && HEADING_FIRST_WORDS.has(words[0].toLowerCase())) continue
+    if (words.length < 2 || words.length > 6) continue
+    if (name.length > 60) continue
+    if (!/^[A-Z0-9]/.test(name)) continue
+    if (name.endsWith(".")) continue
+    // Removes sentence fragments ("For very advanced treatment, such"): a comma, or a
+    // last word that isn't capitalised. Connectors (of, and, de, la, &) are fine
+    // mid-name but never as the last word, so only the last word is checked.
+    if (name.includes(",") || !/^[A-Z0-9]/.test(words[words.length - 1])) continue
+
+    const key = name.toLowerCase()
+    // The client itself: exact match, or the full name followed by a space.
+    if (own && (key === own || key.startsWith(own + " "))) continue
+    if (GENERIC_LAST_WORDS.has(words[words.length - 1].toLowerCase())) continue
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    results.push(name)
+  }
+
+  return results
 }

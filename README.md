@@ -96,7 +96,16 @@ From [.env.example](.env.example).
 | `PORT` | No | Port the Express server listens on. Defaults to `4000`. |
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key used for scans. Without it, scans on the Claude platform fail and a warning is logged at startup. |
 | `ANTHROPIC_MODEL` | No | Claude model id. Defaults to `claude-sonnet-5-5`. |
+| `FRONTEND_URL` | No | Comma-separated list of frontend origins allowed by CORS. Defaults to `http://localhost:5173`. Example: `https://app.example.com`. |
+| `TRUST_PROXY` | No | Number of reverse proxies in front of the server (positive integer). Set to `1` behind one proxy so rate limiting sees real client IPs. Ignored if unset or invalid. |
 | `OPENAI_API_KEY`, `PERPLEXITY_API_KEY`, `GEMINI_API_KEY` | No | Commented out in `.env.example`. Only for the paused providers. |
+
+## Deployment notes
+
+- Set `FRONTEND_URL` to the frontend's origin (for example `https://app.example.com`). Requests from other origins are blocked by CORS.
+- Set `TRUST_PROXY=1` when the server runs behind one proxy, so rate limits apply per client IP rather than per proxy.
+- Run `npx prisma migrate deploy` once against the production database.
+- Set `VITE_API_URL` to the backend's absolute origin when building the frontend. The `/api` proxy exists only in the Vite dev server.
 
 ## API
 

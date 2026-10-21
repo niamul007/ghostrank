@@ -17,7 +17,7 @@ const SCAN_MAX = 10
 // Scan window length in minutes
 const SCAN_WINDOW_MINUTES = 60
 
-// NOTE: a deployment behind a proxy would need app.set("trust proxy") configured, or all clients share the proxy's IP.
+// NOTE: behind a proxy, set the TRUST_PROXY env variable (see src/app.ts), or all clients share the proxy's IP.
 
 function limiter(max: number, windowMinutes: number, message: string, keyGenerator?: (req: any) => string) {
   return rateLimit({

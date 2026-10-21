@@ -84,7 +84,8 @@ export function ClientDetailPage() {
     return (
       <>
         <BackLink />
-        <ErrorBanner message={error} />
+        {/* A failed delete also lands here with the client loaded; retrying the load would not redo the delete. */}
+        <ErrorBanner message={error} onRetry={client ? undefined : load} />
       </>
     )
   }

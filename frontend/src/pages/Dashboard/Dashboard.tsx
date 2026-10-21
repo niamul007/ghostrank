@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { PageHeader } from "../../components/PageHeader"
 import { Card } from "../../components/Card"
@@ -26,49 +26,54 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
+  // Bumped on every load and on unmount so a stale request can't set state.
+  const requestRef = useRef(0)
 
-    async function load() {
-      setLoading(true)
-      setError(null)
-      try {
-        const clientList = await listClients()
-        if (cancelled) return
-        setClients(clientList)
+  async function load() {
+    const request = ++requestRef.current
+    const isStale = () => request !== requestRef.current
 
-        // No "all reports for this agency" endpoint exists — only
-        // per-client. Bound the fan-out to the 6 most recently active
-        // clients so the dashboard stays fast for demo-sized data.
-        const candidates = [...clientList]
-          .filter((c) => c.scans && c.scans.length > 0)
-          .sort(
-            (a, b) =>
-              new Date(b.scans![0]!.createdAt).getTime() - new Date(a.scans![0]!.createdAt).getTime()
-          )
-          .slice(0, 6)
+    setLoading(true)
+    setError(null)
+    try {
+      const clientList = await listClients()
+      if (isStale()) return
+      setClients(clientList)
 
-        const reportLists = await Promise.all(
-          candidates.map((c) => listReportsForClient(c.id).catch(() => [] as ReportListItem[]))
+      // No "all reports for this agency" endpoint exists — only
+      // per-client. Bound the fan-out to the 6 most recently active
+      // clients so the dashboard stays fast for demo-sized data.
+      const candidates = [...clientList]
+        .filter((c) => c.scans && c.scans.length > 0)
+        .sort(
+          (a, b) =>
+            new Date(b.scans![0]!.createdAt).getTime() - new Date(a.scans![0]!.createdAt).getTime()
         )
-        if (cancelled) return
+        .slice(0, 6)
 
-        const merged: RecentReport[] = reportLists.flatMap((list, i) =>
-          list.map((item) => ({ item, clientName: candidates[i]!.businessName }))
-        )
-        merged.sort((a, b) => new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime())
-        setReports(merged.slice(0, 5))
-      } catch (err) {
-        if (!cancelled) setError(getErrorMessage(err))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+      const reportLists = await Promise.all(
+        candidates.map((c) => listReportsForClient(c.id).catch(() => [] as ReportListItem[]))
+      )
+      if (isStale()) return
+
+      const merged: RecentReport[] = reportLists.flatMap((list, i) =>
+        list.map((item) => ({ item, clientName: candidates[i]!.businessName }))
+      )
+      merged.sort((a, b) => new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime())
+      setReports(merged.slice(0, 5))
+    } catch (err) {
+      if (!isStale()) setError(getErrorMessage(err))
+    } finally {
+      if (!isStale()) setLoading(false)
     }
+  }
 
+  useEffect(() => {
     load()
     return () => {
-      cancelled = true
+      requestRef.current++
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (loading) return <PageSpinner label="Loading dashboard…" />
@@ -77,7 +82,7 @@ export function DashboardPage() {
     return (
       <>
         <PageHeader eyebrow="Command center" title="Dashboard" />
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error} onRetry={load} />
       </>
     )
   }

@@ -22,25 +22,26 @@ export function ReportsListPage() {
   const [rows, setRows] = useState<ReportRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      setError(null)
-      try {
-        // Same story as Scans: no "all reports for this agency" endpoint,
-        // only per-client — composed from every client's report list.
-        const clientList = await listClients()
-        const reportLists = await Promise.all(
-          clientList.map((c) => listReportsForClient(c.id).catch(() => [] as ReportListItem[]))
-        )
-        const merged: ReportRow[] = reportLists.flatMap((list, i) =>
-          list.map((item) => ({ item, clientName: clientList[i]!.businessName }))
-        )
-        merged.sort((a, b) => new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime())
-        setRows(merged)
-      } catch (err) {
-        setError(getErrorMessage(err))
-      }
+  async function load() {
+    setError(null)
+    try {
+      // Same story as Scans: no "all reports for this agency" endpoint,
+      // only per-client — composed from every client's report list.
+      const clientList = await listClients()
+      const reportLists = await Promise.all(
+        clientList.map((c) => listReportsForClient(c.id).catch(() => [] as ReportListItem[]))
+      )
+      const merged: ReportRow[] = reportLists.flatMap((list, i) =>
+        list.map((item) => ({ item, clientName: clientList[i]!.businessName }))
+      )
+      merged.sort((a, b) => new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime())
+      setRows(merged)
+    } catch (err) {
+      setError(getErrorMessage(err))
     }
+  }
+
+  useEffect(() => {
     load()
   }, [])
 
@@ -54,7 +55,7 @@ export function ReportsListPage() {
         description="Client-ready visibility reports generated from your scans."
       />
 
-      {error ? <ErrorBanner message={error} /> : null}
+      {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       {rows && rows.length === 0 ? (
         <EmptyState

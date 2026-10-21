@@ -56,7 +56,7 @@ export function ClientsListPage() {
         }
       />
 
-      {error ? <ErrorBanner message={error} /> : null}
+      {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       {clients && clients.length === 0 ? (
         <EmptyState

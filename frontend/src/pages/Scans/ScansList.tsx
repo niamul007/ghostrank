@@ -87,7 +87,7 @@ export function ScansListPage() {
         }
       />
 
-      {error ? <ErrorBanner message={error} /> : null}
+      {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
       {rows && rows.length === 0 ? (
         <EmptyState

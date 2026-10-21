@@ -95,6 +95,11 @@ api.interceptors.response.use(
  */
 export function getErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
+    const status = err.response?.status
+    if (err.code !== "ECONNABORTED" && (!err.response || status === 502 || status === 503 || status === 504)) {
+      return "Can't reach the server. Please try again in a moment."
+    }
+
     const body = err.response?.data as ApiErrorBody | undefined
 
     if (body && "errors" in body && body.errors) {
@@ -112,11 +117,7 @@ export function getErrorMessage(err: unknown): string {
       return "The request timed out. Please try again."
     }
 
-    if (!err.response) {
-      return "Couldn't reach the server. Is the backend running?"
-    }
-
-    return `Request failed (${err.response.status}).`
+    return `Request failed (${status ?? "unknown"}).`
   }
 
   if (err instanceof Error) return err.message

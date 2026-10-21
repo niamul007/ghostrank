@@ -66,6 +66,12 @@ export function ScanDetailPage() {
     }
   }
 
+  function retry() {
+    setError(null)
+    setScan(null)
+    load()
+  }
+
   function toggleExpanded(resultId: string) {
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -79,7 +85,7 @@ export function ScanDetailPage() {
     return (
       <>
         <BackLink />
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error} onRetry={retry} />
       </>
     )
   }

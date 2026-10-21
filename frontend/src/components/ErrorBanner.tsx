@@ -1,4 +1,6 @@
-export function ErrorBanner({ message }: { message: string }) {
+import { Button } from "./Button"
+
+export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div
       role="alert"
@@ -8,6 +10,11 @@ export function ErrorBanner({ message }: { message: string }) {
         !
       </span>
       <span>{message}</span>
+      {onRetry ? (
+        <Button type="button" variant="secondary" size="sm" className="ml-auto shrink-0" onClick={onRetry}>
+          Try again
+        </Button>
+      ) : null}
     </div>
   )
 }

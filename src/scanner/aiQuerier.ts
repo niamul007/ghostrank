@@ -17,8 +17,8 @@ import Anthropic from "@anthropic-ai/sdk"
 import { AI_SYSTEM_PROMPT, aiConfig } from "../config/ai.config"
 import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types"
 
-// Output cap for Claude answers; the system prompt asks for short lists, so this is ample.
-const CLAUDE_MAX_TOKENS = 500
+// Output cap for Claude answers; leaves room for a 5-line list.
+const CLAUDE_MAX_TOKENS = 700
 
 // ──────────────────────────────────────────
 // SDK Clients — a new client is created on each call

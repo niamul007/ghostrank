@@ -6,3 +6,5 @@ generated
 .env.*
 !.env.example
 dev.log
+.env.local
+.env

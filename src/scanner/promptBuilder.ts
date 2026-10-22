@@ -60,7 +60,8 @@ function fillTemplate(
   payload: ScanJobPayload
 ): string {
   return template
-    .replace(/{business}/g, payload.niche)
+    // trim: already-saved niches may have trailing spaces
+    .replace(/{business}/g, payload.niche.trim())
     .replace(/{location}/g, payload.location)
     .replace(/{name}/g, payload.businessName)
 }

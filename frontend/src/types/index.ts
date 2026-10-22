@@ -207,6 +207,19 @@ export interface ReportData {
     fix: string | null
   }[]
   recommendations: string[]
+  // Added later — absent on reports generated before they existed, so the
+  // page treats each as optional and hides its section when missing.
+  breakdown?: ScoreBreakdown
+  byPromptType?: Partial<Record<PromptCategory, { total: number; mentioned: number }>>
+  competitors?: { name: string; mentions: number }[]
+  topFixes?: { recommendation: string; missedPrompts: number }[]
+}
+
+export interface ScoreBreakdown {
+  mentionRate: { earned: number; max: number }
+  position: { earned: number; max: number }
+  coverage: { earned: number; max: number }
+  sentiment: { earned: number; max: number }
 }
 
 /** What GET /api/clients/:clientId/reports returns — scan is trimmed. */

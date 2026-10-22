@@ -157,3 +157,104 @@ export function findCompetitors(response: string, businessName: string): string[
 
   return results
 }
+
+// ──────────────────────────────────────────
+// Aggregates for the report overview (also computed from saved results only)
+// ──────────────────────────────────────────
+
+export interface ScoreBreakdown {
+  mentionRate: { earned: number; max: number }
+  position: { earned: number; max: number }
+  coverage: { earned: number; max: number }
+  sentiment: { earned: number; max: number }
+}
+
+/**
+ * Rounds the four unrounded score parts to whole points that add up to
+ * exactly Math.round(sum of parts) — the same rounding computeScore uses
+ * for the overall score. Largest-remainder rounding: every part is floored,
+ * then the leftover points go to the parts with the biggest fractions.
+ */
+export function buildScoreBreakdown(
+  parts: { mentionRate: number; positionQuality: number; platformCoverage: number; sentimentBonus: number },
+  weights: { mentionRate: number; positionQuality: number; platformCoverage: number; sentimentBonus: number }
+): ScoreBreakdown {
+  const raw = [parts.mentionRate, parts.positionQuality, parts.platformCoverage, parts.sentimentBonus]
+  const target = Math.round(raw.reduce((a, b) => a + b, 0))
+  const earned = raw.map(Math.floor)
+  let leftover = target - earned.reduce((a, b) => a + b, 0)
+  const byFraction = raw
+    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i)
+  for (const { i } of byFraction) {
+    if (leftover <= 0) break
+    earned[i] += 1
+    leftover -= 1
+  }
+  return {
+    mentionRate: { earned: earned[0], max: weights.mentionRate },
+    position: { earned: earned[1], max: weights.positionQuality },
+    coverage: { earned: earned[2], max: weights.platformCoverage },
+    sentiment: { earned: earned[3], max: weights.sentimentBonus },
+  }
+}
+
+export type PromptTypeStats = Record<FixCategory, { total: number; mentioned: number }>
+
+/** Prompts sent and prompts that mentioned the business, per prompt type. Unknown categories are ignored. */
+export function countByPromptType(results: { category: string; mentioned: boolean }[]): PromptTypeStats {
+  const stats = {} as PromptTypeStats
+  for (const c of CATEGORIES) stats[c] = { total: 0, mentioned: 0 }
+  for (const r of results) {
+    const bucket = (stats as Record<string, { total: number; mentioned: number } | undefined>)[r.category]
+    if (!bucket) continue
+    bucket.total += 1
+    if (r.mentioned) bucket.mentioned += 1
+  }
+  return stats
+}
+
+/** Max competitors in the report summary. */
+export const TOP_COMPETITORS = 5
+
+/**
+ * Most frequent competitor names across all results (each result's list is
+ * already cleaned by findCompetitors). Names are merged case-insensitively;
+ * ties sort alphabetically so the output is stable.
+ */
+export function topCompetitors(
+  lists: string[][]
+): { name: string; mentions: number }[] {
+  const counts = new Map<string, { name: string; mentions: number }>()
+  for (const list of lists) {
+    for (const name of list) {
+      const key = name.toLowerCase()
+      const entry = counts.get(key)
+      if (entry) entry.mentions += 1
+      else counts.set(key, { name, mentions: 1 })
+    }
+  }
+  return [...counts.values()]
+    .sort((a, b) => b.mentions - a.mentions || a.name.localeCompare(b.name))
+    .slice(0, TOP_COMPETITORS)
+}
+
+/** Max items in topFixes. */
+export const TOP_FIXES = 3
+
+/**
+ * Picks the recommendations that close the biggest gap: ranked by how many
+ * prompts missed the business that the recommendation addresses (most
+ * first); ties keep the original recommendation order. Recommendations that
+ * address no missed prompts are left out.
+ */
+export function rankTopFixes(
+  items: { recommendation: string; missedPrompts: number }[]
+): { recommendation: string; missedPrompts: number }[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.missedPrompts > 0)
+    .sort((a, b) => b.item.missedPrompts - a.item.missedPrompts || a.index - b.index)
+    .slice(0, TOP_FIXES)
+    .map(({ item }) => item)
+}

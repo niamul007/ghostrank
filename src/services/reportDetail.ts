@@ -217,24 +217,49 @@ export function countByPromptType(results: { category: string; mentioned: boolea
 /** Max competitors in the report summary. */
 export const TOP_COMPETITORS = 5
 
+const LEGAL_SUFFIX = /(?:[\s,]*\(pvt\.?\)\s*ltd\.?|[\s,]+(?:ltd|limited|inc|co|pvt)\.?)$/i
+
+/** Merge key: lower-cased, trailing legal suffixes removed. */
+function competitorKey(name: string): string {
+  let key = name.trim()
+  for (;;) {
+    const next = key.replace(LEGAL_SUFFIX, "").trim()
+    if (next === key || next === "") break
+    key = next
+  }
+  return key.toLowerCase()
+}
+
 /**
  * Most frequent competitor names across all results (each result's list is
- * already cleaned by findCompetitors). Names are merged case-insensitively;
- * ties sort alphabetically so the output is stable.
+ * already cleaned by findCompetitors). Names that differ only by case or a
+ * trailing legal suffix (Ltd, Limited, Inc, Co, Pvt) are merged, and counted
+ * once per result. The shown name is the most frequent variant (shortest on
+ * a tie); ties in count sort alphabetically so the output is stable.
  */
 export function topCompetitors(
   lists: string[][]
 ): { name: string; mentions: number }[] {
-  const counts = new Map<string, { name: string; mentions: number }>()
+  const groups = new Map<string, { mentions: number; variants: Map<string, number> }>()
   for (const list of lists) {
+    const seen = new Set<string>()
     for (const name of list) {
-      const key = name.toLowerCase()
-      const entry = counts.get(key)
-      if (entry) entry.mentions += 1
-      else counts.set(key, { name, mentions: 1 })
+      const key = competitorKey(name)
+      if (seen.has(key)) continue
+      seen.add(key)
+      let group = groups.get(key)
+      if (!group) groups.set(key, (group = { mentions: 0, variants: new Map() }))
+      group.mentions += 1
+      group.variants.set(name, (group.variants.get(name) ?? 0) + 1)
     }
   }
-  return [...counts.values()]
+  return [...groups.values()]
+    .map((g) => {
+      const [name] = [...g.variants.entries()].sort(
+        (a, b) => b[1] - a[1] || a[0].length - b[0].length || a[0].localeCompare(b[0])
+      )[0]
+      return { name, mentions: g.mentions }
+    })
     .sort((a, b) => b.mentions - a.mentions || a.name.localeCompare(b.name))
     .slice(0, TOP_COMPETITORS)
 }

@@ -13,13 +13,21 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "../lib/prisma"
 import { ACTIVE_PLATFORMS } from "../config/ai.config"
 import type { VisibilityScore, Platform } from "../types"
+import type { ParsedScanResult } from "../types"
+import { WEIGHTS, computeScoreParts } from "../scorer"
 import { AppError } from "../utils/AppError"
 import {
   classifyIssue,
+  buildScoreBreakdown,
+  countByPromptType,
   findCompetitors,
   getFix,
   makeExcerpt,
+  rankTopFixes,
+  topCompetitors,
+  type PromptTypeStats,
   type ResultIssue,
+  type ScoreBreakdown,
 } from "./reportDetail"
 
 /**
@@ -64,6 +72,17 @@ export interface ReportData {
   }[]
   /** Actionable recommendations based on the score */
   recommendations: string[]
+  /** Score parts in whole points; the four "earned" values add up to `score` */
+  breakdown: ScoreBreakdown
+  /** Prompts sent and prompts that mentioned the business, per prompt type */
+  byPromptType: PromptTypeStats
+  /** Top 5 competitor names across all prompts, most mentioned first */
+  competitors: { name: string; mentions: number }[]
+  /**
+   * Up to 3 recommendations, ranked by how many prompts missed the business
+   * that each one addresses (most first; ties keep recommendation order)
+   */
+  topFixes: { recommendation: string; missedPrompts: number }[]
 }
 
 /**
@@ -92,17 +111,24 @@ function generateRecommendations(
   score: number,
   platformScores: Record<Platform, number>,
   mentionCount: number,
-  totalPrompts: number
-): string[] {
-  const recommendations: string[] = []
+  totalPrompts: number,
+  results: { platform: string; mentioned: boolean }[] = []
+): { text: string; missedPrompts: number }[] {
+  const recommendations: { text: string; missedPrompts: number }[] = []
+  // Prompts that missed the business, overall and per platform (from saved results)
+  const missedTotal = results.filter((r) => !r.mentioned).length
+  const missedOn = (platform: Platform) =>
+    results.filter((r) => r.platform === platform && !r.mentioned).length
 
   // Overall visibility
   if (score < 20) {
-    recommendations.push(
+    recommendations.push({
+      text:
       "Your business is virtually invisible in AI search. " +
       "Focus on building online authority through business directory listings, " +
-      "Google Business Profile optimization, and consistent NAP (Name, Address, Phone) data."
-    )
+      "Google Business Profile optimization, and consistent NAP (Name, Address, Phone) data.",
+      missedPrompts: missedTotal,
+    })
   }
 
   // Platform-specific gaps
@@ -116,40 +142,49 @@ function generateRecommendations(
         platform === "perplexity" ? "Perplexity" :
         platform === "gemini" ? "Google Gemini" :
         "Claude"
-      recommendations.push(
+      recommendations.push({
+        text:
         `You have zero visibility on ${platformName}. ` +
         `This means anyone using ${platformName} to find a business like yours ` +
-        `will never see your name.`
-      )
+        `will never see your name.`,
+        missedPrompts: missedOn(platform),
+      })
     }
   }
 
   // Mention rate
   if (mentionCount > 0 && mentionCount < totalPrompts * 0.5) {
-    recommendations.push(
+    recommendations.push({
+      text:
       "You're mentioned in some searches but not consistently. " +
       "Adding structured data (schema markup) to your website " +
-      "and getting listed on more industry directories can improve consistency."
-    )
+      "and getting listed on more industry directories can improve consistency.",
+      missedPrompts: missedTotal,
+    })
   }
 
   // Content recommendations
   if (score < 60) {
-    recommendations.push(
+    recommendations.push({
+      text:
       "Create content that directly answers questions your customers ask. " +
       "AI models pull from helpful, question-answering content. " +
       "Blog posts like 'How to choose a " + "provider in your area' " +
-      "help AI models associate your business with relevant queries."
-    )
+      "help AI models associate your business with relevant queries.",
+      missedPrompts: missedTotal,
+    })
   }
 
   // Positive signals
   if (score >= 40) {
-    recommendations.push(
+    recommendations.push({
+      text:
       "You have a foundation to build on. Focus on earning positive " +
       "reviews and mentions on authoritative sites to strengthen " +
-      "your AI visibility further."
-    )
+      "your AI visibility further.",
+      // A general next step, not tied to any missed prompts
+      missedPrompts: 0,
+    })
   }
 
   return recommendations
@@ -210,7 +245,7 @@ type ScanWithResults = Prisma.ScanGetPayload<{
  * Builds the ReportData structure from an already loaded scan.
  * Shared by generateReport and getReportById so both return the same shape.
  */
-function buildReportData(
+export function buildReportData(
   scan: ScanWithResults,
   reportId: string,
   createdAt: Date
@@ -253,12 +288,14 @@ function buildReportData(
   })
 
   // Generate recommendations
-  const recommendations = generateRecommendations(
+  const recommendationItems = generateRecommendations(
     score,
     rawScore?.byPlatform ?? { chatgpt: 0, perplexity: 0, gemini: 0, claude: 0 },
     rawScore?.mentionCount ?? 0,
-    rawScore?.totalPrompts ?? 0
+    rawScore?.totalPrompts ?? 0,
+    scan.scanResults
   )
+  const recommendations = recommendationItems.map((r) => r.text)
 
   // Build the final report
   const reportData: ReportData = {
@@ -274,6 +311,18 @@ function buildReportData(
     platforms: platformBreakdown,
     results,
     recommendations,
+    breakdown: buildScoreBreakdown(
+      computeScoreParts(scan.scanResults as unknown as ParsedScanResult[]),
+      WEIGHTS
+    ),
+    byPromptType: countByPromptType(scan.scanResults),
+    competitors: topCompetitors(results.map((r) => r.competitors)),
+    topFixes: rankTopFixes(
+      recommendationItems.map((r) => ({
+        recommendation: r.text,
+        missedPrompts: r.missedPrompts,
+      }))
+    ),
   }
 
   return reportData

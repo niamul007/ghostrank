@@ -17,6 +17,12 @@
 import { ACTIVE_PLATFORMS } from "../config/ai.config"
 import type { ParsedScanResult, Platform, VisibilityScore } from "../types"
 
+/** The fields of a scan result the score calculation reads. */
+export type ScorableResult = Pick<
+  ParsedScanResult,
+  "platform" | "mentioned" | "position" | "sentiment"
+>
+
 /**
  * How much each factor contributes to the final score:
  *
@@ -40,7 +46,7 @@ import type { ParsedScanResult, Platform, VisibilityScore } from "../types"
  * is a huge difference in click-through. Platform coverage and
  * sentiment are secondary bonuses.
  */
-const WEIGHTS = {
+export const WEIGHTS = {
   mentionRate: 40,
   positionQuality: 30,
   platformCoverage: 15,
@@ -53,7 +59,7 @@ const WEIGHTS = {
  * Simple ratio: mentions / total prompts × weight
  * 3 mentions out of 5 prompts = 0.6 × 40 = 24
  */
-function calcMentionRate(results: ParsedScanResult[]): number {
+function calcMentionRate(results: ScorableResult[]): number {
   if (results.length === 0) return 0
 
   const mentioned = results.filter((r) => r.mentioned).length
@@ -77,7 +83,7 @@ function calcMentionRate(results: ParsedScanResult[]): number {
  * look at #1 and #2. Being #5 is barely better than not
  * being mentioned at all.
  */
-function calcPositionQuality(results: ParsedScanResult[]): number {
+function calcPositionQuality(results: ScorableResult[]): number {
   const mentioned = results.filter((r) => r.mentioned)
   if (mentioned.length === 0) return 0
 
@@ -113,7 +119,7 @@ function calcPositionQuality(results: ParsedScanResult[]): number {
  * Different people use different AI tools. A business visible
  * only on ChatGPT misses everyone using Perplexity or Gemini.
  */
-function calcPlatformCoverage(results: ParsedScanResult[]): number {
+function calcPlatformCoverage(results: ScorableResult[]): number {
   // ChatGPT/Perplexity/Gemini are paused for now (see aiQuerier.ts) —
   // ACTIVE_PLATFORMS in ai.config.ts lists what is currently scanned.
   const platforms = ACTIVE_PLATFORMS
@@ -140,7 +146,7 @@ function calcPlatformCoverage(results: ParsedScanResult[]): number {
  * This rewards businesses that AI speaks positively about,
  * not just mentions.
  */
-function calcSentimentBonus(results: ParsedScanResult[]): number {
+function calcSentimentBonus(results: ScorableResult[]): number {
   const mentioned = results.filter((r) => r.mentioned)
   if (mentioned.length === 0) return 0
 
@@ -251,14 +257,11 @@ function calcSentimentBreakdown(
  * platformCoverage (15) + sentimentBonus (15) = 100 max
  */
 export function computeScore(results: ParsedScanResult[]): VisibilityScore {
-  const mentionRate = calcMentionRate(results)
-  const positionQuality = calcPositionQuality(results)
-  const platformCoverage = calcPlatformCoverage(results)
-  const sentimentBonus = calcSentimentBonus(results)
+  const parts = computeScoreParts(results)
 
   // Sum all components and round to nearest integer
   const overall = Math.round(
-    mentionRate + positionQuality + platformCoverage + sentimentBonus
+    parts.mentionRate + parts.positionQuality + parts.platformCoverage + parts.sentimentBonus
   )
 
   return {
@@ -268,5 +271,18 @@ export function computeScore(results: ParsedScanResult[]): VisibilityScore {
     totalPrompts: results.length,
     sentimentBreakdown: calcSentimentBreakdown(results),
     averagePosition: calcAveragePosition(results),
+  }
+}
+
+/**
+ * The four unrounded score components (points earned, out of WEIGHTS).
+ * Their sum, rounded, is the overall score from computeScore.
+ */
+export function computeScoreParts(results: ScorableResult[]) {
+  return {
+    mentionRate: calcMentionRate(results),
+    positionQuality: calcPositionQuality(results),
+    platformCoverage: calcPlatformCoverage(results),
+    sentimentBonus: calcSentimentBonus(results),
   }
 }

@@ -17,6 +17,7 @@ export function CompetitorBars({ competitors }: { competitors: { name: string; m
               label={c.name}
               value={c.mentions}
               max={max}
+              tone="neutral"
               readout={String(c.mentions)}
               tooltip={`${c.name}: recommended ${c.mentions} ${c.mentions === 1 ? "time" : "times"}`}
             />

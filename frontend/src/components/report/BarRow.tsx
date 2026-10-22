@@ -1,5 +1,5 @@
 import { useMounted } from "../../hooks/useMounted"
-import { TONE_FILL, toneForPct } from "./barTone"
+import { TONE_FILL, toneForPct, type BarTone } from "./barTone"
 
 interface BarRowProps {
   label: string
@@ -9,12 +9,14 @@ interface BarRowProps {
   readout: string
   /** Exact numbers shown in the hover/focus tooltip. */
   tooltip: string
+  /** Fill color. Defaults to the green/amber/red scale by percentage; "neutral" is a single accent. */
+  tone?: BarTone | "neutral"
   active?: boolean
   onClick?: () => void
 }
 
 /** One labelled horizontal bar. Becomes a toggle button when onClick is given. */
-export function BarRow({ label, value, max, readout, tooltip, active = false, onClick }: BarRowProps) {
+export function BarRow({ label, value, max, readout, tooltip, tone, active = false, onClick }: BarRowProps) {
   const mounted = useMounted()
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0
 
@@ -26,7 +28,7 @@ export function BarRow({ label, value, max, readout, tooltip, active = false, on
       </span>
       <span className="block h-2 w-full overflow-hidden rounded-full border border-border-soft bg-surface-2">
         <span
-          className={`block h-full rounded-full transition-[width] duration-700 ease-out ${TONE_FILL[toneForPct(pct)]}`}
+          className={`block h-full rounded-full transition-[width] duration-700 ease-out ${tone === "neutral" ? "bg-accent" : TONE_FILL[tone ?? toneForPct(pct)]}`}
           style={{ width: mounted ? `${pct}%` : "0%" }}
         />
       </span>

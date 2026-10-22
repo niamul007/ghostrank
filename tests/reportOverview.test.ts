@@ -93,6 +93,41 @@ describe("topCompetitors", () => {
   it("returns an empty list for no competitors", () => {
     expect(topCompetitors([[], []])).toEqual([])
   })
+
+  it("merges names that differ only by a legal suffix", () => {
+    const out = topCompetitors([
+      ["United Hospital"],
+      ["United Hospital Limited"],
+      ["Square Hospitals"],
+      ["square hospitals LTD."],
+      ["Acme (Pvt.) Ltd"],
+      ["Acme Inc."],
+    ])
+    expect(out).toHaveLength(3)
+    expect(out.map((c) => c.mentions)).toEqual([2, 2, 2])
+    expect(out.map((c) => c.name)).toEqual(["Acme Inc.", "Square Hospitals", "United Hospital"])
+  })
+
+  it("counts a merged name once per result", () => {
+    const out = topCompetitors([["United Hospital", "United Hospital Limited", "united hospital"], ["Other"]])
+    expect(out.find((c) => c.name === "United Hospital")?.mentions).toBe(1)
+  })
+
+  it("shows the most frequent variant, shortest on a tie", () => {
+    const frequent = topCompetitors([
+      ["Square Hospitals Ltd"],
+      ["Square Hospitals Ltd"],
+      ["Square Hospitals"],
+    ])
+    expect(frequent).toEqual([{ name: "Square Hospitals Ltd", mentions: 3 }])
+    const tie = topCompetitors([["United Hospital Limited"], ["United Hospital"]])
+    expect(tie).toEqual([{ name: "United Hospital", mentions: 2 }])
+  })
+
+  it("keeps unrelated names separate", () => {
+    const out = topCompetitors([["Square Hospital", "Square Hospitals", "Dhaka Square Hospitals", "Co"]])
+    expect(out).toHaveLength(4)
+  })
 })
 
 describe("rankTopFixes", () => {

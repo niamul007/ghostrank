@@ -137,11 +137,17 @@ export function ScanDetailPage() {
                 <Stat label="Mentioned" value={`${scan.rawResults.mentionCount}/${scan.rawResults.totalPrompts}`} />
                 <Stat
                   label="Avg. position"
-                  value={scan.rawResults.averagePosition !== null ? `#${scan.rawResults.averagePosition}` : "—"}
+                  value={
+                    scan.rawResults.averagePosition !== null
+                      ? `#${scan.rawResults.averagePosition}`
+                      : scan.rawResults.mentionCount === 0
+                        ? "Not listed"
+                        : "Not ranked"
+                  }
                 />
                 <Stat
                   label="Sentiment"
-                  value={`+${scan.rawResults.sentimentBreakdown.positive} / -${scan.rawResults.sentimentBreakdown.negative}`}
+                  value={`+${scan.rawResults.sentimentBreakdown.positive} / ${scan.rawResults.sentimentBreakdown.neutral} neutral / -${scan.rawResults.sentimentBreakdown.negative}`}
                 />
               </div>
             ) : null}

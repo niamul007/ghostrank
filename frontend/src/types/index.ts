@@ -105,7 +105,15 @@ export interface Client {
   agencyId: string
   businessName: string
   niche: string
+  /** Legacy column: older clients only have this. New ones get it copied from city. */
   location: string
+  city: string | null
+  website: string | null
+  facebookUrl: string | null
+  mapsUrl: string | null
+  nameVariants: string[]
+  knownFor: string[]
+  competitors: string[]
   createdAt: string
   updatedAt: string
   /** Present on list (latest 1) and detail (full history) responses only. */
@@ -114,8 +122,14 @@ export interface Client {
 
 export interface CreateClientPayload {
   businessName: string
+  city: string
   niche: string
-  location: string
+  website?: string
+  facebookUrl?: string
+  mapsUrl?: string
+  nameVariants?: string[]
+  knownFor?: string[]
+  competitors?: string[]
 }
 
 export type UpdateClientPayload = Partial<CreateClientPayload>

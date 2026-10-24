@@ -7,6 +7,8 @@
 // ──────────────────────────────────────────
 
 import { z } from "zod"
+import { LIST_ITEM_MAX, LIST_LIMITS } from "./clientOptions"
+import type { Client } from "../types"
 
 export const registerFormSchema = z
   .object({
@@ -33,19 +35,84 @@ export const loginFormSchema = z.object({
 
 export type LoginFormValues = z.infer<typeof loginFormSchema>
 
-export const clientFormSchema = z.object({
-  businessName: z
-    .string()
-    .min(2, "Business name must be at least 2 characters")
-    .max(200, "Business name too long"),
-  niche: z.string().min(2, "Niche must be at least 2 characters").max(100, "Niche too long"),
-  location: z
-    .string()
-    .min(2, "Location must be at least 2 characters")
-    .max(200, "Location too long"),
-})
+function isHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value)
+    return u.protocol === "http:" || u.protocol === "https:"
+  } catch {
+    return false
+  }
+}
 
-export type ClientFormValues = z.infer<typeof clientFormSchema>
+// Blank is allowed (the "at least one link" rule is checked on the whole form)
+// and becomes undefined so it is left out of the request.
+const linkField = (label: string) =>
+  z
+    .string()
+    .trim()
+    .max(2000, `${label} is too long`)
+    .refine((v) => v === "" || isHttpUrl(v), `${label} must be a valid http(s) link, like https://example.com`)
+    .transform((v) => (v === "" ? undefined : v))
+
+// Trims every item and drops empty ones, then enforces item count and length.
+const listField = (label: string, maxItems: number) =>
+  z
+    .array(z.string())
+    .transform((items) => items.map((i) => i.trim()).filter((i) => i !== ""))
+    .pipe(
+      z
+        .array(z.string().max(LIST_ITEM_MAX, `Each ${label} item must be ${LIST_ITEM_MAX} characters or fewer`))
+        .max(maxItems, `${label} can have at most ${maxItems} items`)
+    )
+
+export const clientFormSchema = z
+  .object({
+    businessName: z
+      .string()
+      .trim()
+      .min(2, "Business name must be at least 2 characters")
+      .max(200, "Business name is too long"),
+    city: z
+      .string()
+      .trim()
+      .min(2, "City or area must be at least 2 characters")
+      .max(200, "City or area is too long"),
+    niche: z.string().trim().min(1, "Choose a niche").max(100, "Niche is too long"),
+    website: linkField("Website"),
+    facebookUrl: linkField("Facebook page"),
+    mapsUrl: linkField("Google Maps link"),
+    nameVariants: listField("Name variants", LIST_LIMITS.nameVariants),
+    knownFor: listField("Known for", LIST_LIMITS.knownFor),
+    competitors: listField("Competitors", LIST_LIMITS.competitors),
+  })
+  .refine((d) => d.website || d.facebookUrl || d.mapsUrl, {
+    message: "Add at least one link",
+    path: ["links"],
+  })
+
+/** Validated form output — what gets sent to the API. */
+export type ClientFormValues = z.output<typeof clientFormSchema>
+
+/** Raw form state before validation (links are plain strings, "" when empty). */
+export type ClientFormInput = z.input<typeof clientFormSchema>
+
+/**
+ * Starting values for the edit form. Old clients may have no city (only a
+ * location), so the location is shown as the city in that case.
+ */
+export function clientToFormInput(client: Client): ClientFormInput {
+  return {
+    businessName: client.businessName,
+    city: client.city || client.location,
+    niche: client.niche,
+    website: client.website ?? "",
+    facebookUrl: client.facebookUrl ?? "",
+    mapsUrl: client.mapsUrl ?? "",
+    nameVariants: client.nameVariants ?? [],
+    knownFor: client.knownFor ?? [],
+    competitors: client.competitors ?? [],
+  }
+}
 
 /** Flattens a zod error into { field: firstMessage } — what Input's error prop expects. */
 export function fieldErrors<T extends Record<string, unknown>>(

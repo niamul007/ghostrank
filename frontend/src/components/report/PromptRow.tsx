@@ -35,9 +35,11 @@ export function PromptRow({ result }: { result: ReportData["results"][number] })
         <p className="wrap-break-word text-sm text-text">{result.prompt}</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <Badge tone="neutral">{result.category}</Badge>
-          <Badge tone={result.mentioned ? "good" : "neutral"}>
-            {result.mentioned ? "mentioned" : "not mentioned"}
-          </Badge>
+          {result.issue !== "not_mentioned" ? (
+            <Badge tone={result.mentioned ? "good" : "neutral"}>
+              {result.mentioned ? "mentioned" : "not mentioned"}
+            </Badge>
+          ) : null}
           {result.position !== null ? <Badge tone="accent">position #{result.position}</Badge> : null}
           {result.sentiment ? (
             <Badge tone={SENTIMENT_TONE[result.sentiment as SentimentLabel]}>{result.sentiment}</Badge>

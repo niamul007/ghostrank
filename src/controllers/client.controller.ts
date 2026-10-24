@@ -11,7 +11,10 @@ import { prisma } from "../lib/prisma"
  * POST /api/clients
  *
  * Adds a new client business to monitor.
- * Requires: businessName, niche, location
+ * Requires: businessName, city, niche, and at least one of
+ * website / facebookUrl / mapsUrl (enforced by createClientSchema)
+ * Optional: location. When omitted it is saved as the city, because
+ * the database column is required.
  *
  * The agencyId comes from the JWT token (req.agencyId)
  * set by the auth middleware — so agencies can only
@@ -23,13 +26,17 @@ export async function createClient(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { businessName, niche, location } = req.body
+    const {
+      businessName, niche, location, city,
+      website, facebookUrl, mapsUrl,
+      nameVariants, knownFor, competitors,
+    } = req.body
     const agencyId = req.user!.agencyId
 
-    if (!businessName || !niche || !location) {
+    if (!businessName || !niche || !city) {
       res.status(400).json({
         status: "error",
-        message: "businessName, niche, and location are required",
+        message: "businessName, city, and niche are required",
       })
       return
     }
@@ -39,7 +46,14 @@ export async function createClient(
         agencyId,
         businessName,
         niche,
-        location,
+        location: location || city,
+        city,
+        website,
+        facebookUrl,
+        mapsUrl,
+        nameVariants,
+        knownFor,
+        competitors,
       },
     })
 
@@ -152,7 +166,11 @@ export async function updateClient(
   try {
     const id = req.params.id as string
     const agencyId = req.user!.agencyId
-    const { businessName, niche, location } = req.body
+    const {
+      businessName, niche, location, city,
+      website, facebookUrl, mapsUrl,
+      nameVariants, knownFor, competitors,
+    } = req.body
 
     // Verify ownership
     const existing = await prisma.client.findFirst({
@@ -173,6 +191,13 @@ export async function updateClient(
         ...(businessName && { businessName }),
         ...(niche && { niche }),
         ...(location && { location }),
+        ...(city && { city }),
+        ...(website && { website }),
+        ...(facebookUrl && { facebookUrl }),
+        ...(mapsUrl && { mapsUrl }),
+        ...(nameVariants !== undefined && { nameVariants }),
+        ...(knownFor !== undefined && { knownFor }),
+        ...(competitors !== undefined && { competitors }),
       },
     })
 

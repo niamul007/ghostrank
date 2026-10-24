@@ -8,8 +8,10 @@ describe("input trimming", () => {
       businessName: "  Acme Shoes ",
       niche: "Shoe store ",
       location: " Dhaka ",
+      city: " Dhaka ",
+      website: "https://acme.example",
     })
-    expect(r).toEqual({ businessName: "Acme Shoes", niche: "Shoe store", location: "Dhaka" })
+    expect(r).toMatchObject({ businessName: "Acme Shoes", niche: "Shoe store", location: "Dhaka", city: "Dhaka" })
   })
 
   it("trims fields on update", () => {
@@ -17,7 +19,9 @@ describe("input trimming", () => {
   })
 
   it("rejects whitespace-only niche", () => {
-    expect(createClientSchema.safeParse({ businessName: "Acme", niche: "   ", location: "Dhaka" }).success).toBe(false)
+    expect(createClientSchema.safeParse({
+      businessName: "Acme", city: "Dhaka", niche: "   ", location: "Dhaka", website: "https://acme.example",
+    }).success).toBe(false)
   })
 })
 

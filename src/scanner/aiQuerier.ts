@@ -17,8 +17,25 @@ import Anthropic from "@anthropic-ai/sdk"
 import { AI_SYSTEM_PROMPT, aiConfig } from "../config/ai.config"
 import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types"
 
-// Output cap for Claude answers; leaves room for a 5-line list.
-const CLAUDE_MAX_TOKENS = 700
+// Output cap for Claude answers. Adaptive thinking is on by default for
+// this model and its tokens count against the cap, so leave headroom
+// beyond the 5-line list.
+export const CLAUDE_MAX_TOKENS = 1500
+
+// Pause before retrying a Claude call that came back with no usable text.
+const EMPTY_ANSWER_RETRY_DELAY_MS = 1000
+
+/**
+ * Claude replied, but with no usable text (e.g. only a thinking block).
+ * The message holds only the stop_reason and block types, so it is safe
+ * to store on a QueryFailure.
+ */
+export class EmptyAnswerError extends Error {
+  constructor(stopReason: string | null, blockTypes: string[]) {
+    super(`stop_reason=${stopReason ?? "null"}, blocks=[${blockTypes.join(",")}]`)
+    this.name = "EmptyAnswerError"
+  }
+}
 
 // ──────────────────────────────────────────
 // SDK Clients — a new client is created on each call
@@ -201,11 +218,26 @@ async function queryGemini(promptText: string): Promise<string> {
 async function queryClaude(
   promptText: string
 ): Promise<{ text: string; usage: ClaudeUsage }> {
+  try {
+    return await queryClaudeOnce(promptText)
+  } catch (error) {
+    if (!(error instanceof EmptyAnswerError)) throw error
+    console.warn(`Claude returned no text (${error.message}), retrying once`)
+    await delay(EMPTY_ANSWER_RETRY_DELAY_MS)
+    return await queryClaudeOnce(promptText)
+  }
+}
+
+/** One Claude call. Throws EmptyAnswerError if there is no non-blank text block. */
+async function queryClaudeOnce(
+  promptText: string
+): Promise<{ text: string; usage: ClaudeUsage }> {
   const client = getClaudeClient()
 
   const response = await client.messages.create({
     model: aiConfig.claude.model,
     max_tokens: CLAUDE_MAX_TOKENS,
+    output_config: { effort: "low" },
     system: [
       {
         type: "text",
@@ -222,8 +254,15 @@ async function queryClaude(
 
   const textBlock = response.content.find((block) => block.type === "text")
 
+  if (textBlock?.type !== "text" || textBlock.text.trim() === "") {
+    throw new EmptyAnswerError(
+      response.stop_reason,
+      response.content.map((block) => block.type)
+    )
+  }
+
   return {
-    text: textBlock?.type === "text" ? textBlock.text : "",
+    text: textBlock.text,
     usage: {
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
@@ -341,6 +380,7 @@ export async function queryAllPlatforms(
  */
 function describeFailure(error: unknown): string {
   if (!(error instanceof Error)) return "Unknown error"
+  if (error instanceof EmptyAnswerError) return `${error.name} (${error.message})`
 
   const status = (error as { status?: unknown }).status
   return typeof status === "number"

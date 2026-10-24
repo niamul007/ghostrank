@@ -56,6 +56,14 @@ export function ReportDetailPage() {
       : report.results
     : []
 
+  // Top fixes already show their recommendation text; don't repeat it below.
+  const topFixTexts = new Set(report?.topFixes?.map((f) => f.recommendation))
+  const remainingRecommendations = report
+    ? report.topFixes
+      ? report.recommendations.filter((rec) => !topFixTexts.has(rec))
+      : report.recommendations
+    : []
+
   if (error) {
     return (
       <>
@@ -106,11 +114,11 @@ export function ReportDetailPage() {
         </div>
       ) : null}
 
-      {report.recommendations.length > 0 ? (
+      {remainingRecommendations.length > 0 ? (
         <section className="mb-8">
           <h2 className="mb-3 font-display text-sm font-semibold text-text">Recommendations</h2>
           <div className="flex flex-col gap-2">
-            {report.recommendations.map((rec, i) => (
+            {remainingRecommendations.map((rec, i) => (
               <Card key={i} className="flex gap-3">
                 <span className="mt-0.5 shrink-0 font-mono text-xs font-semibold text-accent">
                   {String(i + 1).padStart(2, "0")}

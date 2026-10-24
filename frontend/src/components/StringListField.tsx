@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react"
+import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react"
 import { Button } from "./Button"
 
 interface StringListFieldProps {
@@ -14,19 +14,20 @@ interface StringListFieldProps {
   suggestions?: string[]
 }
 
+/** Lets a parent read or clear text that was typed but never added (used when a form step is saved). */
+export interface StringListFieldHandle {
+  getDraft: () => string
+  clearDraft: () => void
+}
+
 /** A small add-and-remove list of short text items with a visible limit. */
-export function StringListField({
-  label,
-  items,
-  onChange,
-  max,
-  itemMax,
-  placeholder,
-  hint,
-  error,
-  suggestions = [],
-}: StringListFieldProps) {
+export const StringListField = forwardRef<StringListFieldHandle, StringListFieldProps>(function StringListField(
+  { label, items, onChange, max, itemMax, placeholder, hint, error, suggestions = [] },
+  ref
+) {
   const [draft, setDraft] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+  useImperativeHandle(ref, () => ({ getDraft: () => draft, clearDraft: () => setDraft("") }), [draft])
   const full = items.length >= max
   const id = `list-${label.toLowerCase().replace(/\s+/g, "-")}`
 
@@ -39,6 +40,14 @@ export function StringListField({
     }
     onChange([...items, value])
     setDraft("")
+  }
+
+  function handleAddClick() {
+    if (!draft.trim()) {
+      inputRef.current?.focus()
+      return
+    }
+    add(draft)
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -63,11 +72,11 @@ export function StringListField({
       </div>
 
       {items.length > 0 ? (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="flex flex-wrap gap-1.5">
           {items.map((item, idx) => (
             <li
               key={`${item}-${idx}`}
-              className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text"
+              className="flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-2 py-1 pl-3 pr-2 text-sm text-text"
             >
               <span className="min-w-0 break-words">{item}</span>
               <button
@@ -76,7 +85,7 @@ export function StringListField({
                 className="shrink-0 text-xs text-text-dim hover:text-bad"
                 aria-label={`Remove ${item}`}
               >
-                Remove
+                ✕
               </button>
             </li>
           ))}
@@ -87,6 +96,7 @@ export function StringListField({
         <div className="flex gap-2">
           <input
             id={id}
+            ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -96,7 +106,7 @@ export function StringListField({
               ${error || tooLong ? "border-bad focus:border-bad" : "border-border focus:border-accent"}`}
             aria-invalid={Boolean(error) || tooLong}
           />
-          <Button type="button" variant="ghost" size="sm" onClick={() => add(draft)} disabled={!draft.trim() || tooLong}>
+          <Button type="button" variant="outline" size="sm" onClick={handleAddClick} disabled={tooLong}>
             Add
           </Button>
         </div>
@@ -128,4 +138,4 @@ export function StringListField({
       ) : null}
     </div>
   )
-}
+})

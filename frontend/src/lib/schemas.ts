@@ -96,6 +96,30 @@ export type ClientFormValues = z.output<typeof clientFormSchema>
 /** Raw form state before validation (links are plain strings, "" when empty). */
 export type ClientFormInput = z.input<typeof clientFormSchema>
 
+/** Which form fields belong to each step of the business form (0-based). "links" is the at-least-one-link rule. */
+export const CLIENT_FORM_STEP_FIELDS: ReadonlyArray<ReadonlyArray<keyof ClientFormInput | "links">> = [
+  ["businessName", "city", "niche"],
+  ["website", "facebookUrl", "mapsUrl", "links"],
+  ["nameVariants", "knownFor", "competitors"],
+]
+
+/** Runs the full client schema and returns only the errors that belong to one step. */
+export function clientStepErrors(input: ClientFormInput, step: number): Record<string, string> {
+  const result = clientFormSchema.safeParse(input)
+  if (result.success) return {}
+  const all = fieldErrors(result.error as z.ZodError<Record<string, unknown>>) as Record<string, string>
+  const out: Record<string, string> = {}
+  for (const key of CLIENT_FORM_STEP_FIELDS[step]) {
+    if (all[key]) out[key] = all[key]
+  }
+  return out
+}
+
+/** The first step (0-based) that owns one of the given error keys, or -1. */
+export function firstStepWithError(errorKeys: string[]): number {
+  return CLIENT_FORM_STEP_FIELDS.findIndex((fields) => fields.some((f) => errorKeys.includes(f)))
+}
+
 /**
  * Starting values for the edit form. Old clients may have no city (only a
  * location), so the location is shown as the city in that case.

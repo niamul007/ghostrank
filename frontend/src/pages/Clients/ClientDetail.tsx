@@ -15,7 +15,7 @@ import { deleteClient, getClient, updateClient } from "../../api/clients"
 import { startScan } from "../../api/scans"
 import { getErrorMessage } from "../../api/client"
 import { formatRelative } from "../../lib/format"
-import type { ClientFormValues } from "../../lib/schemas"
+import { clientToFormInput, type ClientFormValues } from "../../lib/schemas"
 import type { Client } from "../../types"
 import { ClientForm } from "./ClientForm"
 
@@ -172,11 +172,7 @@ export function ClientDetailPage() {
 
       <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Edit client">
         <ClientForm
-          initialValues={{
-            businessName: client.businessName,
-            niche: client.niche,
-            location: client.location,
-          }}
+          initialValues={clientToFormInput(client)}
           submitLabel="Save changes"
           onSubmit={handleUpdate}
           onCancel={() => setShowEdit(false)}

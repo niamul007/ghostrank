@@ -229,11 +229,10 @@ async function queryClaude(
 }
 
 /** One Claude call. Throws EmptyAnswerError if there is no non-blank text block. */
-async function queryClaudeOnce(
-  promptText: string
+export async function queryClaudeOnce(
+  promptText: string,
+  client: Anthropic = getClaudeClient()
 ): Promise<{ text: string; usage: ClaudeUsage }> {
-  const client = getClaudeClient()
-
   const response = await client.messages.create({
     model: aiConfig.claude.model,
     max_tokens: CLAUDE_MAX_TOKENS,
@@ -378,7 +377,7 @@ export async function queryAllPlatforms(
  * Never includes the provider's raw message — that text can echo
  * request details, so it is only logged, never stored.
  */
-function describeFailure(error: unknown): string {
+export function describeFailure(error: unknown): string {
   if (!(error instanceof Error)) return "Unknown error"
   if (error instanceof EmptyAnswerError) return `${error.name} (${error.message})`
 

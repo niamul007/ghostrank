@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "postinstall": "prisma generate",
     "test": "vitest run",
-    "smoke:v2": "ts-node src/scripts/smokeV2.ts"
+    "smoke:v2": "ts-node src/scripts/smokeV2.ts",
+    "rescore": "ts-node src/scripts/rescore.ts"
   },
   "repository": {
     "type": "git",

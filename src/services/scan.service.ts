@@ -210,6 +210,23 @@ export async function getScanById(scanId: string, agencyId: string) {
 }
 
 /**
+ * Gets a scan's status plus its ScanRun rows (new runner), or null if the
+ * scan does not exist or belongs to another agency.
+ */
+export async function getScanRuns(scanId: string, agencyId: string) {
+  return prisma.scan.findFirst({
+    where: { id: scanId, client: { agencyId } },
+    select: {
+      id: true,
+      status: true,
+      errorMsg: true,
+      rawResults: true,
+      runs: { orderBy: [{ questionId: "asc" }, { runNumber: "asc" }] },
+    },
+  })
+}
+
+/**
  * Gets all scans for a specific client, newest first.
  *
  * Used in the dashboard to show scan history:

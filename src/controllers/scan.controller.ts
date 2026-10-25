@@ -10,7 +10,8 @@
 // and bring back the food (response). They don't cook.
 
 import { Request, Response, NextFunction } from "express"
-import { createScan, runScan, getScanById, getScansByClient } from "../services/scan.service"
+import { createScan, runScan, getScanById, getScansByClient, getScanRuns } from "../services/scan.service"
+import { runScanV2 } from "../scanner/runScanV2"
 import { prisma } from "../lib/prisma"
 import { AppError } from "../utils/AppError"
 
@@ -75,6 +76,77 @@ export async function startScan(
         scanId: scan.id,
         message: "Scan started. Poll GET /api/scans/" + scan.id + " for results.",
       },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * POST /api/clients/:clientId/scans/v2
+ *
+ * Starts a scan with the new question runner. Same flow as startScan:
+ * create the record, run in the background, return the scan ID.
+ */
+export async function startScanV2(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const clientId = req.params.clientId as string
+    const agencyId = req.user!.agencyId
+
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, agencyId },
+    })
+
+    if (!client) {
+      throw new AppError("Client not found", 404)
+    }
+
+    const scan = await createScan(clientId)
+
+    // runScanV2 never throws; the catch is a last-resort guard
+    runScanV2(scan.id, client.id).catch((err) => {
+      console.error(`Scan ${scan.id} (v2) failed:`, err)
+    })
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        scanId: scan.id,
+        message: "Scan started. Poll GET /api/scans/" + scan.id + " for status.",
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * GET /api/scans/:id/runs
+ *
+ * Returns the scan status and its ScanRun rows, ordered by question and run.
+ */
+export async function getRuns(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const id = req.params.id as string
+    const agencyId = req.user!.agencyId
+
+    const scan = await getScanRuns(id, agencyId)
+
+    if (!scan) {
+      throw new AppError("Scan not found", 404)
+    }
+
+    res.json({
+      status: "success",
+      data: scan,
     })
   } catch (error) {
     next(error)

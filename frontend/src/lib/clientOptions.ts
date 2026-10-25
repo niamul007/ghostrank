@@ -24,6 +24,7 @@ export const NICHES = [
   "Car repair or auto service",
   "Furniture or interior design",
   "Photography or event services",
+  "Home services",
   OTHER_NICHE,
 ] as const
 

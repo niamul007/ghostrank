@@ -20,8 +20,28 @@ describe("aggregateNamedBusinesses", () => {
     ])
     expect(result.others).toEqual([
       { name: "Lotto Bangladesh", runs: 3 },
-      { name: "Walkar", runs: 2 },
+      { name: "Walkar Footwear", runs: 2 },
     ])
+  })
+
+  it.each([
+    ["Cova", "Caffè Cova"],
+    ["Marchesi 1824", "Pasticceria Marchesi 1824"],
+    ["Lotto", "Lotto Bangladesh"],
+    ["Walkar", "Walkar Footwear"],
+  ])("merges %s into %s", (short, long) => {
+    const result = agg([run(`1. ${short}\n2. ${long}`), run(`1. ${long}`)])
+    expect(result.others).toEqual([{ name: long, runs: 2 }])
+  })
+
+  it("does not bridge: a short name contained by two longer names stays separate", () => {
+    const result = agg([run("1. Bay Footwear\n2. Bay Leaf Cafe\n3. Bay")])
+    expect(result.others.map((o) => o.name).sort()).toEqual(["Bay", "Bay Footwear", "Bay Leaf Cafe"])
+  })
+
+  it("counts a merged business once per run", () => {
+    const result = agg([run("1. Cova\n2. Caffè Cova")])
+    expect(result.others).toEqual([{ name: "Caffè Cova", runs: 1 }])
   })
 
   it("counts a business once per run even when listed twice", () => {

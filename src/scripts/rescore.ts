@@ -14,6 +14,18 @@ import { aggregateNamedBusinesses } from "../scanner/namedBusinesses"
 
 const TOP_OTHERS = 10
 
+const CONTEXT_CHARS = 40
+
+function describeMatch(answer: string, matchedName: string): string {
+  const at = answer.toLowerCase().indexOf(matchedName.toLowerCase())
+  if (at === -1) return `match: ${matchedName}`
+  const flat = (t: string) => t.replace(/\s+/g, " ")
+  const before = flat(answer.slice(Math.max(0, at - CONTEXT_CHARS), at))
+  const hit = flat(answer.slice(at, at + matchedName.length))
+  const after = flat(answer.slice(at + matchedName.length, at + matchedName.length + CONTEXT_CHARS))
+  return `match: ${matchedName} | ...${before}[${hit}]${after}...`
+}
+
 async function main(): Promise<void> {
   const scanId = process.argv.slice(2).find((arg) => !arg.startsWith("--"))
   if (!scanId) {
@@ -75,6 +87,9 @@ async function main(): Promise<void> {
       console.log(
         `  run ${run.runNumber}: mentioned ${mention.mentioned ? "yes" : "no"}, position ${mention.position ?? "-"}`,
       )
+      if (mention.mentioned && mention.matchedName) {
+        console.log(`    ${describeMatch(run.answer ?? "", mention.matchedName)}`)
+      }
     }
     if (verdicts.size === 0) console.log("  runs agreed: n/a (no successful runs)")
     else console.log(`  runs agreed: ${verdicts.size === 1 ? "yes" : "no"}`)

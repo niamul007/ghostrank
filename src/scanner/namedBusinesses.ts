@@ -17,8 +17,33 @@ export interface NamedBusinesses {
   totalCountedRuns: number
 }
 
-function isWordPrefix(shorter: string[], longer: string[]): boolean {
-  return shorter.length <= longer.length && shorter.every((w, i) => w === longer[i])
+const GENERIC_WORDS = new Set([
+  "cafe",
+  "caffe",
+  "coffee",
+  "bar",
+  "pasticceria",
+  "restaurant",
+  "ristorante",
+  "shop",
+  "the",
+  "di",
+  "da",
+  "and",
+  "of",
+])
+
+function coreWords(key: string): string[] {
+  const words = key.split(" ")
+  const core = words.filter((w) => !GENERIC_WORDS.has(w))
+  return core.length > 0 ? core : words
+}
+
+function isContiguousRun(shorter: string[], longer: string[]): boolean {
+  for (let i = 0; i + shorter.length <= longer.length; i++) {
+    if (shorter.every((w, j) => w === longer[i + j])) return true
+  }
+  return false
 }
 
 export function aggregateNamedBusinesses({
@@ -60,22 +85,26 @@ export function aggregateNamedBusinesses({
     }
   }
 
-  // Merge keys that are word-prefixes of each other (union-find)
+  // Keys with the same core are one entry; a shorter core merges into a longer
+  // one only when exactly one longer core contains it (no chaining).
   const keys = [...spellings.keys()]
-  const words = new Map(keys.map((k) => [k, k.split(" ")]))
-  const parent = new Map(keys.map((k) => [k, k]))
-  const find = (k: string): string => {
-    let root = k
-    while (parent.get(root) !== root) root = parent.get(root)!
-    return root
+  const entryOf = new Map<string, string>()
+  const entryWords = new Map<string, string[]>()
+  for (const key of keys) {
+    const words = coreWords(key)
+    const id = words.join(" ")
+    entryOf.set(key, id)
+    entryWords.set(id, words)
   }
-  for (let i = 0; i < keys.length; i++) {
-    for (let j = i + 1; j < keys.length; j++) {
-      const a = words.get(keys[i])!
-      const b = words.get(keys[j])!
-      if (isWordPrefix(a, b) || isWordPrefix(b, a)) parent.set(find(keys[i]), find(keys[j]))
-    }
+  const target = new Map<string, string>()
+  for (const [id, words] of entryWords) {
+    const containers = [...entryWords].filter(
+      ([otherId, other]) =>
+        otherId !== id && other.length > words.length && isContiguousRun(words, other),
+    )
+    target.set(id, containers.length === 1 ? containers[0][0] : id)
   }
+  const find = (k: string): string => target.get(entryOf.get(k)!)!
 
   const groups = new Map<string, { runs: number; spellings: Map<string, number> }>()
   for (const key of keys) {
@@ -93,7 +122,7 @@ export function aggregateNamedBusinesses({
   }
 
   const others = [...groups.values()].map((g) => {
-    const name = [...g.spellings].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0]
+    const name = [...g.spellings].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length || a[0].localeCompare(b[0]))[0][0]
     return { name, runs: g.runs }
   })
   others.sort((a, b) => b.runs - a.runs || a.name.localeCompare(b.name))

@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react"
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react"
 import { Button } from "./Button"
 
 interface StringListFieldProps {
@@ -14,7 +14,7 @@ interface StringListFieldProps {
   suggestions?: string[]
 }
 
-/** Lets a parent read or clear text that was typed but never added (used when a form step is saved). */
+/** Lets a parent read or clear text that was typed but never added (used to merge drafts on final submit). */
 export interface StringListFieldHandle {
   getDraft: () => string
   clearDraft: () => void
@@ -30,6 +30,11 @@ export const StringListField = forwardRef<StringListFieldHandle, StringListField
   useImperativeHandle(ref, () => ({ getDraft: () => draft, clearDraft: () => setDraft("") }), [draft])
   const full = items.length >= max
   const id = `list-${label.toLowerCase().replace(/\s+/g, "-")}`
+
+  // The input is hidden once the list is full, so drop any leftover text at that moment.
+  useEffect(() => {
+    if (full) setDraft("")
+  }, [full])
 
   function add(text: string) {
     const value = text.trim()

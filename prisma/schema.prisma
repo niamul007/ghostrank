@@ -15,6 +15,11 @@ enum Role {
   ADMIN
 }
 
+enum RunStatus {
+  SUCCESS
+  FAILED
+}
+
 enum ScanStatus {
   PENDING
   RUNNING
@@ -73,6 +78,7 @@ model Scan {
   client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   scanResults ScanResult[]
   reports     Report[]
+  runs        ScanRun[]
 
   @@index([clientId])
   @@index([status])
@@ -91,6 +97,30 @@ model ScanResult {
 
   scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
 
+  @@index([scanId])
+}
+
+model ScanRun {
+  id           String    @id @default(cuid())
+  scanId       String
+  questionId   String
+  group        String
+  questionText String
+  scored       Boolean
+  runNumber    Int
+  provider     String
+  model        String
+  status       RunStatus
+  answer       String
+  errorLabel   String?
+  inputTokens  Int?
+  outputTokens Int?
+  durationMs   Int?
+  createdAt    DateTime  @default(now())
+
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@unique([scanId, questionId, runNumber])
   @@index([scanId])
 }
 

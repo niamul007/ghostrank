@@ -9,7 +9,8 @@ import "dotenv/config"
 import { RunStatus } from "@prisma/client"
 import { prisma } from "../lib/prisma"
 import { scoreScan } from "../scanner/scorer"
-import { classifyListed, extractListedNames, findMention, normalize } from "../scanner/matcher"
+import { findMention } from "../scanner/matcher"
+import { aggregateNamedBusinesses } from "../scanner/namedBusinesses"
 
 const TOP_OTHERS = 10
 
@@ -48,7 +49,7 @@ async function main(): Promise<void> {
   console.log(`countedRuns:     ${result.countedRuns}`)
   console.log(`expectedRuns:    ${result.expectedRuns}`)
   console.log(`lowConfidence:   ${result.lowConfidence}`)
-  console.log(`averagePosition: ${result.averagePosition ?? "(none)"}`)
+  console.log(`averagePosition: ${result.averagePosition === null ? "(none)" : result.averagePosition.toFixed(1)}`)
   console.log(`byGroup:         ${JSON.stringify(result.byGroup)}`)
   console.log(`reputation:      ${JSON.stringify(result.reputation)}`)
   console.log("perQuestion:")
@@ -80,44 +81,23 @@ async function main(): Promise<void> {
   }
 
   console.log("\n── Named by the AI ──")
-  const successful = runs.filter((r) => r.status === RunStatus.SUCCESS)
-  const others = new Map<string, { name: string; runs: number }>()
-  const competitorRuns = new Map<string, number>(client.competitors.map((c) => [c, 0]))
+  const named = aggregateNamedBusinesses({
+    runs,
+    businessNames,
+    competitorNames: client.competitors,
+  })
 
-  for (const run of successful) {
-    const listed = extractListedNames(run.answer)
-
-    const seenOthers = new Set<string>()
-    for (const item of classifyListed(listed, businessNames, client.competitors)) {
-      if (item.kind !== "other") continue
-      const key = normalize(item.name)
-      if (!key || seenOthers.has(key)) continue
-      seenOthers.add(key)
-      const entry = others.get(key)
-      if (entry) entry.runs++
-      else others.set(key, { name: item.name, runs: 1 })
-    }
-
-    for (const competitor of client.competitors) {
-      const named = classifyListed(listed, businessNames, [competitor]).some(
-        (l) => l.kind === "chosen-competitor",
-      )
-      if (named) competitorRuns.set(competitor, (competitorRuns.get(competitor) ?? 0) + 1)
-    }
-  }
-
-  console.log(`successful runs: ${successful.length}`)
+  console.log(`counted runs: ${named.totalCountedRuns}`)
   console.log(`\nOther businesses (not client, not a chosen competitor), top ${TOP_OTHERS}:`)
-  const topOthers = [...others.values()].sort((a, b) => b.runs - a.runs || a.name.localeCompare(b.name))
-  if (topOthers.length === 0) console.log("  (none)")
-  for (const o of topOthers.slice(0, TOP_OTHERS)) {
+  if (named.others.length === 0) console.log("  (none)")
+  for (const o of named.others.slice(0, TOP_OTHERS)) {
     console.log(`  ${o.runs} run(s)  ${o.name}`)
   }
 
   console.log("\nChosen competitors:")
   if (client.competitors.length === 0) console.log("  (none chosen)")
-  for (const [competitor, count] of competitorRuns) {
-    console.log(`  ${count} run(s)  ${competitor}`)
+  for (const c of named.chosenCompetitors) {
+    console.log(`  ${c.runs} run(s)  ${c.name}`)
   }
 }
 

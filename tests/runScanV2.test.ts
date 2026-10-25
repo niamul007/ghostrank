@@ -43,6 +43,7 @@ function setup() {
       rows.push(row)
     },
     loadClient: async () => client,
+    loadRuns: async () => rows,
     updateScan: async (_id: string, data: ScanUpdate) => {
       updates.push(data)
     },
@@ -57,14 +58,49 @@ beforeEach(() => {
 })
 
 describe("runScanV2", () => {
-  it("completes with 24 rows and stores the summary, leaving score unset", async () => {
+  it("completes with 24 rows and stores score, scoring and named results", async () => {
     const s = setup()
-    await runScanV2("s1", "c1", { ...s, provider: goodProvider })
+    const ownProvider: AIProvider = {
+      name: "fake",
+      model: "fake-1",
+      async ask() {
+        return { text: "1. Acme Plumbing\n2. Rival Pipes\n3. Other Co", durationMs: 1 }
+      },
+    }
+    await runScanV2("s1", "c1", { ...s, provider: ownProvider, loadRuns: async () => s.rows })
 
     expect(s.rows).toHaveLength(24)
     expect(s.updates[0]).toEqual({ status: "RUNNING" })
     const final = last(s.updates)
     expect(final.status).toBe("COMPLETED")
+    expect(final.score).toBe(100)
+    expect(final.rawResults).toMatchObject({
+      total: 24,
+      succeeded: 24,
+      failed: 0,
+      saveFailed: 0,
+      questionSetVersion: questionBuilder.QUESTION_SET_VERSION,
+      scoring: { lowConfidence: false, averagePosition: 1 },
+      named: {
+        others: [{ name: "Other Co", runs: expect.any(Number) }],
+        chosenCompetitors: [{ name: "Rival Pipes", runs: expect.any(Number) }],
+      },
+    })
+    expect((final.rawResults as { scoring: { countedRuns: number } }).scoring.countedRuns).toBeGreaterThan(0)
+  })
+
+  it("still completes without the scoring part when loadRuns throws", async () => {
+    const s = setup()
+    const loadRuns = async () => {
+      throw new Error("db down")
+    }
+    await expect(
+      runScanV2("s1", "c1", { ...s, loadRuns, provider: goodProvider })
+    ).resolves.toBeUndefined()
+
+    const final = last(s.updates)
+    expect(final.status).toBe("COMPLETED")
+    expect(final).not.toHaveProperty("score")
     expect(final.rawResults).toEqual({
       total: 24,
       succeeded: 24,
@@ -72,7 +108,6 @@ describe("runScanV2", () => {
       saveFailed: 0,
       questionSetVersion: questionBuilder.QUESTION_SET_VERSION,
     })
-    expect(final).not.toHaveProperty("score")
   })
 
   it("fails when every provider call fails", async () => {

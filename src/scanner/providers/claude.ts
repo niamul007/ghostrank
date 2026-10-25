@@ -36,6 +36,19 @@ export interface ClaudeProviderDeps {
 export function createClaudeProvider(deps: ClaudeProviderDeps = {}): AIProvider {
   const sleep = deps.sleep ?? realSleep
 
+  // Built on the first ask, so import and server startup never need an API key
+  let ownClient: Anthropic | undefined
+  const getClient = (): Anthropic => {
+    if (deps.client) return deps.client
+    // Retries are handled by withRetry, so they are visible and counted
+    ownClient ??= new Anthropic({
+      apiKey: aiConfig.claude.apiKey,
+      timeout: aiConfig.claude.timeoutMs,
+      maxRetries: 0,
+    })
+    return ownClient
+  }
+
   return {
     name: "claude",
     model: aiConfig.claude.model,
@@ -46,12 +59,12 @@ export function createClaudeProvider(deps: ClaudeProviderDeps = {}): AIProvider 
       try {
         let result
         try {
-          result = await queryClaudeOnce(questionText, deps.client)
+          result = await queryClaudeOnce(questionText, getClient())
         } catch (error) {
           if (!(error instanceof EmptyAnswerError)) throw error
           console.warn(`Claude returned no text (${error.message}), retrying once`)
           await sleep(BLANK_ANSWER_RETRY_DELAY_MS)
-          result = await queryClaudeOnce(questionText, deps.client)
+          result = await queryClaudeOnce(questionText, getClient())
         }
 
         return {

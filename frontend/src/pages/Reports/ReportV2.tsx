@@ -175,7 +175,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
 
       <footer className="border-t border-border-soft pt-4 text-xs text-text-faint">
         <p>
-          Generated {formatDateTime(report.generatedAt)} using {report.model.provider} {report.model.model}
+          Generated {formatDateTime(report.generatedAt)} using {({ claude: 'Claude' } as Record<string, string>)[report.model.provider] ?? report.model.provider} ({report.model.model})
         </p>
         <p className="mt-1">AI answers change over time, so a later scan may give different results.</p>
       </footer>

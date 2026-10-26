@@ -15,6 +15,21 @@ const MAX_REPUTATION_ANSWERS = 3
 const REPUTATION_ANSWER_CHARS = 400
 const GROUPS = ["find", "compare", "need"] as const
 
+// Cuts at a word boundary so a shown answer never ends mid-word.
+function cutAtWord(text: string, max: number): string {
+  if (text.length <= max) return text
+  const window = text.slice(0, max + 1)
+  let cut = -1
+  for (let i = window.length - 1; i > 0; i--) {
+    if (/\s/.test(window[i])) {
+      cut = i
+      break
+    }
+  }
+  const head = cut > 0 ? window.slice(0, cut) : text.slice(0, max)
+  return head.replace(/[\s.,;:!?\-–—]+$/, "") + "…"
+}
+
 export type ScoreLabelV2 = "Strong" | "Mixed" | "Rarely named" | "Not named"
 
 export interface ReportDataV2 {
@@ -115,7 +130,7 @@ export function buildReportV2({ reportId, generatedAt, scan, client, runs }: Rep
   const answers = runs
     .filter((r) => !r.scored && r.status === "SUCCESS" && r.answer && r.answer.trim() !== "")
     .slice(0, MAX_REPUTATION_ANSWERS)
-    .map((r) => (r.answer as string).trim().slice(0, REPUTATION_ANSWER_CHARS))
+    .map((r) => cutAtWord((r.answer as string).trim(), REPUTATION_ANSWER_CHARS))
 
   const modelRun = runs.find((r) => r.status === "SUCCESS") ?? runs[0]
   const withPercent = (item: { name: string; runs: number }) => ({

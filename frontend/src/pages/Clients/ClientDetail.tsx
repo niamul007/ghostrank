@@ -62,7 +62,7 @@ export function ClientDetailPage() {
     setScanError(null)
     try {
       const { scanId } = await startScan(id)
-      navigate(`/scans/${scanId}`)
+      navigate(`/scans/${scanId}`, { state: { v2: true } })
     } catch (err) {
       setScanError(getErrorMessage(err))
       setStartingScan(false)
@@ -111,7 +111,7 @@ export function ClientDetailPage() {
         <div>
           <p className="font-display text-sm font-semibold text-text">Run a new scan</p>
           <p className="mt-1 text-sm text-text-dim">
-            Sends fresh prompts to Claude and re-checks {client.businessName}'s AI visibility.
+            Asks Claude fresh questions and re-checks {client.businessName}'s AI visibility.
           </p>
           {scanError ? (
             <p className="mt-2 text-sm text-bad">{scanError}</p>

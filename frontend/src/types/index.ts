@@ -182,6 +182,37 @@ export interface StartScanResponse {
   message: string
 }
 
+export type RunStatus = "SUCCESS" | "FAILED"
+
+/** One ScanRun row from GET /api/scans/:id/runs (a single AI answer). */
+export interface ScanRunRow {
+  id: string
+  scanId: string
+  questionId: string
+  group: string
+  questionText: string
+  scored: boolean
+  runNumber: number
+  provider: string
+  model: string
+  status: RunStatus
+  answer: string
+  errorLabel: string | null
+  inputTokens: number | null
+  outputTokens: number | null
+  durationMs: number | null
+  createdAt: string
+}
+
+/** GET /api/scans/:id/runs — no score here; fetch the scan for that. */
+export interface ScanRunsResponse {
+  id: string
+  status: ScanStatus
+  errorMsg: string | null
+  rawResults: { questionSetVersion?: number | string } | null
+  runs: ScanRunRow[]
+}
+
 // ──────────────────────────────────────────
 // Reports
 // ──────────────────────────────────────────

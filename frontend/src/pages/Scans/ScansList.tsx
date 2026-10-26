@@ -61,7 +61,7 @@ export function ScansListPage() {
     setStartError(null)
     try {
       const { scanId } = await startScan(selectedClientId)
-      navigate(`/scans/${scanId}`)
+      navigate(`/scans/${scanId}`, { state: { v2: true } })
     } catch (err) {
       setStartError(getErrorMessage(err))
       setStarting(false)
@@ -155,7 +155,7 @@ export function ScansListPage() {
               ))}
             </select>
             <p className="text-xs text-text-faint">
-              Sends 5 prompts to Claude simulating how customers search for this business.
+              Asks Claude 24 questions simulating how customers search for this business.
             </p>
           </div>
           <div className="flex justify-end gap-2">

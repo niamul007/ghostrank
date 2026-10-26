@@ -270,6 +270,7 @@ export interface ReportDataV2 {
   id: string
   generatedAt: string
   business: { name: string; niche: string; location: string; city: string | null }
+  agency: { name: string; logo: string | null; brandColors: string[] }
   scanDate: string
   score: number
   scoreLabel: "Strong" | "Mixed" | "Rarely named" | "Not named"

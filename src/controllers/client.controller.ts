@@ -6,6 +6,8 @@
 
 import { Request, Response, NextFunction } from "express"
 import { prisma } from "../lib/prisma"
+import { AppError } from "../utils/AppError"
+import { resultingLinks, hasAnyLink } from "../utils/resultingLinks"
 
 /**
  * POST /api/clients
@@ -156,7 +158,7 @@ export async function getClient(
 /**
  * PATCH /api/clients/:id
  *
- * Updates a client's info (name, niche, location).
+ * Updates a client's info. Links and city: undefined = unchanged, "" = cleared (null).
  */
 export async function updateClient(
   req: Request,
@@ -185,16 +187,20 @@ export async function updateClient(
       return
     }
 
+    if (!hasAnyLink(resultingLinks(existing, { website, facebookUrl, mapsUrl }))) {
+      throw new AppError("A client needs at least one link (website, Facebook or Maps)", 400)
+    }
+
     const client = await prisma.client.update({
       where: { id },
       data: {
         ...(businessName && { businessName }),
         ...(niche && { niche }),
         ...(location && { location }),
-        ...(city && { city }),
-        ...(website && { website }),
-        ...(facebookUrl && { facebookUrl }),
-        ...(mapsUrl && { mapsUrl }),
+        ...(city !== undefined && { city: city || null }),
+        ...(website !== undefined && { website: website || null }),
+        ...(facebookUrl !== undefined && { facebookUrl: facebookUrl || null }),
+        ...(mapsUrl !== undefined && { mapsUrl: mapsUrl || null }),
         ...(nameVariants !== undefined && { nameVariants }),
         ...(knownFor !== undefined && { knownFor }),
         ...(competitors !== undefined && { competitors }),

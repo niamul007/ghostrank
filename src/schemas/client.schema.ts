@@ -86,12 +86,28 @@ export const createClientSchema = z
     path: ["website"],
   })
 
-// Updates are partial: a link can be replaced but not cleared (blank = unchanged),
-// so an updated business can never end up with its last link removed.
+// On update a blank link means "clear it" (saved as null), unlike create where blank is "not provided".
+// An omitted link is left unchanged.
+const clearableUrl = (label: string) =>
+  z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z
+      .string()
+      .trim()
+      .max(2000, `${label} too long`)
+      .refine(isHttpUrl, `${label} must be a valid http(s) URL`)
+      .nullable()
+      .optional()
+  )
+
+// Updates are partial: omitted fields are unchanged.
 export const updateClientSchema = z.object({
   businessName: z.string().trim().min(2).max(200).optional(),
   city: z.string().trim().min(2, "City must be at least 2 characters").max(200).optional(),
   niche: z.string().trim().min(2).max(100).optional(),
   location: z.string().trim().min(2).max(200).optional(),
   ...optionalFields,
+  website: clearableUrl("Website"),
+  facebookUrl: clearableUrl("Facebook URL"),
+  mapsUrl: clearableUrl("Maps URL"),
 })

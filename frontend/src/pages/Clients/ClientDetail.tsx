@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { PageHeader } from "../../components/PageHeader"
 import { Card } from "../../components/Card"
 import { Button } from "../../components/Button"
-import { Modal } from "../../components/Modal"
 import { ConfirmDialog } from "../../components/ConfirmDialog"
 import { StatusPill } from "../../components/StatusPill"
 import { ScoreMeter } from "../../components/ScoreMeter"
@@ -11,13 +10,11 @@ import { EmptyState } from "../../components/EmptyState"
 import { ErrorBanner } from "../../components/ErrorBanner"
 import { PageSpinner } from "../../components/Spinner"
 import { IconArrowLeft, IconArrowRight, IconEdit, IconScans, IconTrash } from "../../components/icons"
-import { deleteClient, getClient, updateClient } from "../../api/clients"
+import { deleteClient, getClient } from "../../api/clients"
 import { startScan } from "../../api/scans"
 import { getErrorMessage } from "../../api/client"
 import { formatRelative } from "../../lib/format"
-import { clientToFormInput, type ClientFormValues } from "../../lib/schemas"
 import type { Client } from "../../types"
-import { ClientForm } from "./ClientForm"
 
 export function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -25,7 +22,6 @@ export function ClientDetailPage() {
 
   const [client, setClient] = useState<Client | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [startingScan, setStartingScan] = useState(false)
@@ -45,13 +41,6 @@ export function ClientDetailPage() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
-
-  async function handleUpdate(values: ClientFormValues) {
-    if (!id) return
-    const updated = await updateClient(id, values)
-    setClient(updated)
-    setShowEdit(false)
-  }
 
   async function handleDelete() {
     if (!id) return
@@ -108,7 +97,7 @@ export function ClientDetailPage() {
         description={client.location}
         action={
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" icon={<IconEdit className="h-4 w-4" />} onClick={() => setShowEdit(true)}>
+            <Button variant="secondary" size="sm" icon={<IconEdit className="h-4 w-4" />} onClick={() => navigate(`/clients/${client.id}/edit`)}>
               Edit
             </Button>
             <Button variant="danger" size="sm" icon={<IconTrash className="h-4 w-4" />} onClick={() => setShowDelete(true)}>
@@ -169,15 +158,6 @@ export function ClientDetailPage() {
           </Card>
         )}
       </section>
-
-      <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Edit client">
-        <ClientForm
-          initialValues={clientToFormInput(client)}
-          submitLabel="Save changes"
-          onSubmit={handleUpdate}
-          onCancel={() => setShowEdit(false)}
-        />
-      </Modal>
 
       <ConfirmDialog
         open={showDelete}

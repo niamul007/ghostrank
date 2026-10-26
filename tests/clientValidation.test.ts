@@ -97,4 +97,13 @@ describe("client business details validation", () => {
     expect(updateClientSchema.safeParse({ city: " " }).success).toBe(false)
     expect(updateClientSchema.parse({ knownFor: [" a ", ""] })).toEqual({ knownFor: ["a"] })
   })
+
+  it("treats a blank link on update as cleared (null) and leaves omitted fields out", () => {
+    const r = updateClientSchema.parse({ website: "", facebookUrl: "  ", mapsUrl: "https://maps.example/x" })
+    expect(r.website).toBeNull()
+    expect(r.facebookUrl).toBeNull()
+    expect(r.mapsUrl).toBe("https://maps.example/x")
+    expect("website" in updateClientSchema.parse({ mapsUrl: "https://maps.example/x" })).toBe(false)
+    expect(updateClientSchema.safeParse({ website: "nope" }).success).toBe(false)
+  })
 })

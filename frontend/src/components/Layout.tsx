@@ -37,9 +37,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const initial = displayName.trim().charAt(0).toUpperCase() || "?"
 
   return (
-    <div className="flex min-h-screen bg-bg sm:h-screen sm:supports-[height:100dvh]:h-dvh sm:min-h-0 sm:overflow-hidden">
+    <div className="print-shell flex min-h-screen bg-bg sm:h-screen sm:supports-[height:100dvh]:h-dvh sm:min-h-0 sm:overflow-hidden">
       {/* ── Sidebar ─────────────────────────────────────────── */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface sm:flex sm:min-h-0">
+      <aside className="no-print hidden w-60 shrink-0 flex-col border-r border-border bg-surface sm:flex sm:min-h-0">
         <div className="flex shrink-0 items-center gap-2.5 px-5 py-6">
           <GhostMark className="h-7 w-7 text-accent" />
           <span className="font-display text-[17px] font-semibold tracking-tight text-text">
@@ -80,8 +80,8 @@ export function Layout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* ── Main column ─────────────────────────────────────── */}
-      <div className="flex min-w-0 flex-1 flex-col sm:min-h-0">
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-3.5 sm:px-8">
+      <div className="print-shell flex min-w-0 flex-1 flex-col sm:min-h-0">
+        <header className="no-print flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-3.5 sm:px-8">
           <div className="flex items-center gap-2.5 sm:hidden">
             <GhostMark className="h-6 w-6 text-accent" />
             <span className="font-display text-sm font-semibold text-text">GhostRank</span>
@@ -100,14 +100,14 @@ export function Layout({ children }: { children: ReactNode }) {
 
         <main
           ref={scrollRef}
-          className="flex-1 px-5 py-8 pb-24 sm:min-h-0 sm:overflow-y-auto sm:px-8 sm:pb-8"
+          className="print-main flex-1 px-5 py-8 pb-24 sm:min-h-0 sm:overflow-y-auto sm:px-8 sm:pb-8"
         >
           <div className="mx-auto w-full max-w-5xl">{children}</div>
         </main>
       </div>
 
       {/* ── Mobile bottom nav ───────────────────────────────── */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface sm:hidden">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface sm:hidden">
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}

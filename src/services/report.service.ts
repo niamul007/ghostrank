@@ -29,12 +29,18 @@ import {
   type ResultIssue,
   type ScoreBreakdown,
 } from "./reportDetail"
+import { buildReportV2, type ReportDataV2 } from "./reportV2"
+
+/** What the report endpoints return: discriminated on `version`. */
+export type Report = ReportData | ReportDataV2
 
 /**
  * The report structure that gets sent to the client.
  * This is what the agency's client actually sees.
  */
 export interface ReportData {
+  /** Old reports are version 1; v2 reports come from buildReportV2 */
+  version: 1
   /** Report metadata */
   id: string
   generatedAt: string
@@ -202,19 +208,20 @@ function generateRecommendations(
 export async function generateReport(
   scanId: string,
   agencyId: string
-): Promise<ReportData> {
-  // Fetch scan with results and client, scoped to this agency
+): Promise<Report> {
+  // Fetch scan with results, v2 runs and client, scoped to this agency
   const scan = await prisma.scan.findFirst({
     where: { id: scanId, client: { agencyId } },
     include: {
       scanResults: true,
+      runs: RUNS_ORDER,
       client: true,
     },
   })
 
   if (!scan) throw new AppError("Scan not found", 404)
   if (scan.status !== "COMPLETED") {
-    throw new Error(`Scan is not completed. Current status: ${scan.status}`)
+    throw new AppError("Scan did not complete, so no report can be generated", 409)
   }
 
   // Idempotent: reuse the existing report for this scan if there is one
@@ -222,7 +229,7 @@ export async function generateReport(
     where: { scanId, client: { agencyId } },
   })
   if (existing) {
-    return buildReportData(scan, existing.id, existing.createdAt)
+    return buildReportForScan(scan, existing.id, existing.createdAt)
   }
 
   // Save report record to database
@@ -233,10 +240,43 @@ export async function generateReport(
     },
   })
 
-  return buildReportData(scan, report.id, report.createdAt)
+  return buildReportForScan(scan, report.id, report.createdAt)
 }
 
-/** A scan loaded with its results and client, as needed to build a report. */
+const RUNS_ORDER = { orderBy: [{ questionId: "asc" }, { runNumber: "asc" }] } satisfies Prisma.Scan$runsArgs
+
+/** A scan loaded with its results, v2 runs and client. */
+type LoadedScan = Prisma.ScanGetPayload<{
+  include: { scanResults: true; runs: true; client: true }
+}>
+
+/**
+ * Picks the builder for a loaded scan: scans with ScanRun rows are v2,
+ * everything else takes the old path unchanged.
+ */
+function buildReportForScan(scan: LoadedScan, reportId: string, createdAt: Date): Report {
+  if (scan.runs.length > 0) {
+    return buildReportV2({
+      reportId,
+      generatedAt: createdAt,
+      scan,
+      client: scan.client,
+      runs: scan.runs.map((r) => ({
+        questionId: r.questionId,
+        group: r.group,
+        questionText: r.questionText,
+        scored: r.scored,
+        status: r.status,
+        answer: r.answer,
+        provider: r.provider,
+        model: r.model,
+      })),
+    })
+  }
+  return buildReportData(scan, reportId, createdAt)
+}
+
+/** A scan loaded with its results and client, as needed to build an old report. */
 type ScanWithResults = Prisma.ScanGetPayload<{
   include: { scanResults: true; client: true }
 }>
@@ -299,6 +339,7 @@ export function buildReportData(
 
   // Build the final report
   const reportData: ReportData = {
+    version: 1,
     id: reportId,
     generatedAt: createdAt.toISOString(),
     business: {
@@ -335,13 +376,14 @@ export function buildReportData(
 export async function getReportById(
   reportId: string,
   agencyId: string
-): Promise<ReportData | null> {
+): Promise<Report | null> {
   const report = await prisma.report.findFirst({
     where: { id: reportId, client: { agencyId } },
     include: {
       scan: {
         include: {
           scanResults: true,
+          runs: RUNS_ORDER,
           client: true,
         },
       },
@@ -349,7 +391,8 @@ export async function getReportById(
   })
   if (!report) return null
 
-  return buildReportData(report.scan, report.id, report.createdAt)
+  // v2 reports are rebuilt on every read; the JSON is not stored
+  return buildReportForScan(report.scan, report.id, report.createdAt)
 }
 
 /**

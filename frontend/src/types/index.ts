@@ -193,6 +193,7 @@ export type ResultIssue = "not_mentioned" | "low_position" | "negative" | "ok"
  * Mirrors ReportData in the backend's src/services/report.service.ts.
  */
 export interface ReportData {
+  version: 1
   id: string
   generatedAt: string
   business: {
@@ -228,6 +229,41 @@ export interface ReportData {
   competitors?: { name: string; mentions: number }[]
   topFixes?: { recommendation: string; missedPrompts: number }[]
 }
+
+/**
+ * Report for a v2 scan (version 2).
+ * Mirrors ReportDataV2 in the backend's src/services/reportV2.ts.
+ */
+export interface ReportDataV2 {
+  version: 2
+  id: string
+  generatedAt: string
+  business: { name: string; niche: string; location: string; city: string | null }
+  scanDate: string
+  score: number
+  scoreLabel: "Strong" | "Mixed" | "Rarely named" | "Not named"
+  scoreRange: { low: number; high: number }
+  basedOnRuns: number
+  lowConfidence: boolean
+  averagePosition: number | null
+  byGroup: {
+    group: "find" | "compare" | "need"
+    mentioned: number
+    counted: number
+    percent: number
+  }[]
+  questions: { questionId: string; group: string; text: string; mentioned: number; counted: number }[]
+  reputationQuestion: { questionId: string; text: string; mentioned: number; counted: number } | null
+  named: {
+    others: { name: string; runs: number; percent: number }[]
+    chosenCompetitors: { name: string; runs: number; percent: number }[]
+  }
+  reputation: { answers: string[] }
+  model: { provider: string; model: string }
+}
+
+/** Either report shape; narrow on `version`. */
+export type Report = ReportData | ReportDataV2
 
 export interface ScoreBreakdown {
   mentionRate: { earned: number; max: number }

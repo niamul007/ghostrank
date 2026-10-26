@@ -61,7 +61,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
                     key={g.group}
                     label={GROUP_LABEL[g.group]}
                     value={g.mentioned}
-                    max={g.counted}
+                    max={Math.max(g.counted, 1)}
                     readout={readout}
                     tooltip={readout}
                   />
@@ -115,7 +115,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
               )}
               {report.averagePosition !== null ? (
                 <p className="mt-5 text-xs text-text-faint">
-                  When named, it was listed around position {report.averagePosition}
+                  When {business.name} was named, it was listed around position {report.averagePosition}
                 </p>
               ) : null}
             </Card>
@@ -157,6 +157,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
       {report.reputation.answers.length > 0 ? (
         <section className="mb-8">
           <SectionTitle>What the AI says when asked directly</SectionTitle>
+          <p className="-mt-2 mb-3 text-xs text-text-faint">AI answers can be inaccurate.</p>
           <div className="flex flex-col gap-3">
             {report.reputation.answers.map((answer, i) => (
               <Card key={i}>

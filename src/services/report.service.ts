@@ -215,7 +215,7 @@ export async function generateReport(
     include: {
       scanResults: true,
       runs: RUNS_ORDER,
-      client: true,
+      client: CLIENT_WITH_AGENCY,
     },
   })
 
@@ -245,9 +245,14 @@ export async function generateReport(
 
 const RUNS_ORDER = { orderBy: [{ questionId: "asc" }, { runNumber: "asc" }] } satisfies Prisma.Scan$runsArgs
 
-/** A scan loaded with its results, v2 runs and client. */
+/** The client with only the agency fields a report may show. Never select email or password. */
+const CLIENT_WITH_AGENCY = {
+  include: { agency: { select: { name: true, logo: true, brandColors: true } } },
+} satisfies Prisma.ScanInclude["client"] & object
+
+/** A scan loaded with its results, v2 runs and client (with a narrow agency). */
 type LoadedScan = Prisma.ScanGetPayload<{
-  include: { scanResults: true; runs: true; client: true }
+  include: { scanResults: true; runs: true; client: typeof CLIENT_WITH_AGENCY }
 }>
 
 /**
@@ -261,6 +266,7 @@ function buildReportForScan(scan: LoadedScan, reportId: string, createdAt: Date)
       generatedAt: createdAt,
       scan,
       client: scan.client,
+      agency: scan.client.agency,
       runs: scan.runs.map((r) => ({
         questionId: r.questionId,
         group: r.group,
@@ -384,7 +390,7 @@ export async function getReportById(
         include: {
           scanResults: true,
           runs: RUNS_ORDER,
-          client: true,
+          client: CLIENT_WITH_AGENCY,
         },
       },
     },

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   buildReportV2,
+  normalizeBrandColors,
   scoreLabelFor,
   wilsonRange,
   type ReportV2Input,
@@ -294,5 +295,48 @@ describe("edge cases", () => {
     expect(report.scoreLabel).toBe("Not named")
     expect(report.scoreRange).toEqual({ low: 0, high: 0 })
     expect(report.named.chosenCompetitors).toEqual([{ name: "Blue Bean", runs: 0, percent: 0 }])
+  })
+})
+
+describe("agency in the report", () => {
+  it("carries only name, logo and brand colours", () => {
+    const agency = {
+      name: "Acme Agency",
+      logo: "https://example.com/logo.png",
+      brandColors: ["#112233", "#445566"],
+      email: "owner@acme.test",
+      password: "$2b$10$hashhashhash",
+      passwordHash: "$2b$10$hashhashhash",
+    }
+    const report = buildReportV2(input({ runs: [run()], agency }))
+    expect(report.agency).toEqual({
+      name: "Acme Agency",
+      logo: "https://example.com/logo.png",
+      brandColors: ["#112233", "#445566"],
+    })
+    const json = JSON.stringify(report)
+    expect(json).not.toMatch(/email/i)
+    expect(json).not.toMatch(/password/i)
+    expect(json).not.toContain("owner@acme.test")
+    expect(json).not.toContain("$2b$")
+  })
+
+  it("falls back to an empty agency when none is given", () => {
+    const report = buildReportV2(input({ runs: [run()] }))
+    expect(report.agency).toEqual({ name: "", logo: null, brandColors: [] })
+  })
+})
+
+describe("normalizeBrandColors", () => {
+  it("accepts a string, an array or an object of strings", () => {
+    expect(normalizeBrandColors("#abc")).toEqual(["#abc"])
+    expect(normalizeBrandColors([" #111111 ", "", "#222222"])).toEqual(["#111111", "#222222"])
+    expect(normalizeBrandColors({ primary: "#333333", secondary: "#444444" })).toEqual(["#333333", "#444444"])
+  })
+
+  it("ignores anything else", () => {
+    expect(normalizeBrandColors(null)).toEqual([])
+    expect(normalizeBrandColors(42)).toEqual([])
+    expect(normalizeBrandColors([1, null, { a: { b: "#555555" } }])).toEqual([])
   })
 })

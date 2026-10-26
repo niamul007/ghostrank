@@ -32,11 +32,36 @@ function cutAtWord(text: string, max: number): string {
 
 export type ScoreLabelV2 = "Strong" | "Mixed" | "Rarely named" | "Not named"
 
+/** The only agency fields a report may carry. Never add email or password. */
+export interface ReportAgencyV2 {
+  name: string
+  logo: string | null
+  brandColors: string[]
+}
+
+/** Agency.brandColors is an unvalidated Json column: accept a string, an array or an object of strings. */
+export function normalizeBrandColors(value: unknown): string[] {
+  const out: string[] = []
+  const walk = (v: unknown, depth: number) => {
+    if (typeof v === "string") {
+      const s = v.trim()
+      if (s) out.push(s)
+    } else if (depth < 2 && Array.isArray(v)) {
+      v.forEach((x) => walk(x, depth + 1))
+    } else if (depth < 2 && v && typeof v === "object") {
+      Object.values(v as Record<string, unknown>).forEach((x) => walk(x, depth + 1))
+    }
+  }
+  walk(value, 0)
+  return out
+}
+
 export interface ReportDataV2 {
   version: 2
   id: string
   generatedAt: string
   business: { name: string; niche: string; location: string; city: string | null }
+  agency: ReportAgencyV2
   scanDate: string
   score: number
   scoreLabel: ScoreLabelV2
@@ -79,6 +104,8 @@ export interface ReportV2Input {
     nameVariants: string[]
     competitors: string[]
   }
+  /** Optional so older callers still work; the report then falls back to an empty agency. */
+  agency?: { name: string; logo: string | null; brandColors: unknown } | null
   runs: ReportV2Run[]
 }
 
@@ -105,7 +132,7 @@ export function wilsonRange(mentioned: number, counted: number): { low: number; 
 const percentOf = (part: number, whole: number): number =>
   whole > 0 ? Math.round((part / whole) * 100) : 0
 
-export function buildReportV2({ reportId, generatedAt, scan, client, runs }: ReportV2Input): ReportDataV2 {
+export function buildReportV2({ reportId, generatedAt, scan, client, agency, runs }: ReportV2Input): ReportDataV2 {
   const businessNames = [client.businessName, ...client.nameVariants]
 
   const scoring = scoreScan({ runs, businessNames })
@@ -148,6 +175,12 @@ export function buildReportV2({ reportId, generatedAt, scan, client, runs }: Rep
       niche: client.niche,
       location: client.location,
       city: client.city,
+    },
+    // Built field by field so nothing else on the agency row can leak through.
+    agency: {
+      name: agency?.name ?? "",
+      logo: agency?.logo ?? null,
+      brandColors: normalizeBrandColors(agency?.brandColors),
     },
     scanDate: scan.createdAt.toISOString(),
     score,

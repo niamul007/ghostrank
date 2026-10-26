@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom"
 import { PageHeader } from "../../components/PageHeader"
 import { Button } from "../../components/Button"
 import { Card } from "../../components/Card"
@@ -18,6 +19,7 @@ function SectionTitle({ children }: { children: string }) {
 
 /** Version 2 report. Score and charts come from counted runs only; reputation answers are shown raw. */
 export function ReportV2({ report }: { report: ReportDataV2 }) {
+  const navigate = useNavigate()
   const { business, basedOnRuns } = report
   const place = business.city ?? business.location
   const hasRuns = basedOnRuns > 0
@@ -29,7 +31,12 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
         title={business.name}
         description={`${place} · scanned ${formatDate(report.scanDate)}`}
         action={
-          <Button variant="secondary" size="sm" className="no-print" onClick={() => window.print()}>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="no-print"
+            onClick={() => navigate(`/reports/${report.id}/print`)}
+          >
             Save as PDF
           </Button>
         }

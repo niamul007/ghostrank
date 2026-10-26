@@ -250,3 +250,268 @@ body {
     display: none !important;
   }
 }
+
+/* ── Dedicated print page (/reports/:id/print) ───────────────────────
+   Light, self-contained palette (pr- prefix); independent of app tokens.
+   On screen: white A4 sheets on grey. In print: one sheet per page. */
+.pr-page {
+  min-height: 100vh;
+  background: #8a8f98;
+  color: #111418;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.pr-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #d5d8de;
+}
+.pr-back {
+  color: #3d4452;
+  font-size: 14px;
+  text-decoration: none;
+}
+.pr-print-btn {
+  cursor: pointer;
+  border: 0;
+  border-radius: 6px;
+  background: #1e3a5f;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+.pr-print-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pr-state {
+  max-width: 210mm;
+  margin: 24px auto;
+  padding: 0 16px;
+  color: #ffffff;
+}
+
+.pr-doc {
+  --pr-accent: #1e3a5f;
+  padding: 24px 0;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: #111418;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.pr-sheet {
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto 24px;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+.pr-band {
+  display: flex;
+  align-items: center;
+  min-height: 28mm;
+  padding: 8mm 18mm;
+}
+.pr-band-name {
+  font-size: 18pt;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.pr-logo {
+  max-height: 16mm;
+  max-width: 60mm;
+  object-fit: contain;
+}
+.pr-body {
+  padding: 16mm 18mm;
+}
+.pr-kicker {
+  margin: 0 0 4mm;
+  font-size: 10pt;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pr-accent);
+}
+.pr-title {
+  margin: 0;
+  font-size: 30pt;
+  line-height: 1.15;
+  font-weight: 700;
+}
+.pr-sub {
+  margin: 3mm 0 0;
+  font-size: 12pt;
+  color: #4a5160;
+}
+.pr-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 18mm;
+  text-align: center;
+}
+.pr-verdict {
+  margin: 4mm 0 1mm;
+  font-size: 22pt;
+  font-weight: 700;
+}
+.pr-summary {
+  max-width: 130mm;
+  margin: 10mm 0 0;
+  font-size: 13pt;
+  line-height: 1.55;
+}
+.pr-note {
+  margin: 6mm 0 0;
+  padding: 2mm 4mm;
+  border: 1px solid #a86a00;
+  border-radius: 2mm;
+  font-size: 10pt;
+  color: #7a4d00;
+}
+.pr-h2 {
+  margin: 10mm 0 4mm;
+  font-size: 14pt;
+  font-weight: 700;
+  break-after: avoid;
+}
+.pr-h2:first-child {
+  margin-top: 0;
+}
+.pr-card {
+  border: 1px solid #d5d8de;
+  border-radius: 3mm;
+  padding: 5mm;
+  break-inside: avoid;
+}
+.pr-bar + .pr-bar {
+  margin-top: 5mm;
+}
+.pr-bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8mm;
+  margin-bottom: 1.5mm;
+  font-size: 10.5pt;
+}
+.pr-bar-track {
+  height: 3mm;
+  border-radius: 2mm;
+  background: #e6e8ec;
+  overflow: hidden;
+}
+.pr-bar-fill {
+  height: 100%;
+  border-radius: 2mm;
+  background: var(--pr-accent);
+}
+.pr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5pt;
+}
+.pr-table th {
+  text-align: left;
+  padding: 0 0 2mm;
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5b6270;
+}
+.pr-table td {
+  padding: 2mm 0;
+  border-top: 1px solid #e6e8ec;
+  vertical-align: top;
+}
+.pr-table tr {
+  break-inside: avoid;
+}
+.pr-right {
+  text-align: right !important;
+  white-space: nowrap;
+  padding-left: 4mm;
+}
+.pr-gap {
+  display: inline-block;
+  padding: 0 2mm;
+  border-radius: 1.5mm;
+  background: #fde8e8;
+  color: #b42318;
+  font-size: 9pt;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.pr-quote {
+  margin: 0 0 4mm;
+  padding: 1mm 0 1mm 5mm;
+  border-left: 1mm solid var(--pr-accent);
+  font-size: 10.5pt;
+  color: #2c3340;
+  white-space: pre-wrap;
+  break-inside: avoid;
+}
+.pr-para {
+  margin: 0;
+  font-size: 10.5pt;
+  color: #2c3340;
+}
+.pr-muted {
+  color: #5b6270;
+}
+.pr-small {
+  font-size: 9.5pt;
+}
+.pr-num {
+  font-variant-numeric: tabular-nums;
+}
+.pr-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8mm;
+  margin-top: 12mm;
+  padding-top: 4mm;
+  border-top: 1px solid #d5d8de;
+  font-size: 9pt;
+  color: #5b6270;
+  break-inside: avoid;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  .pr-page {
+    background: #ffffff;
+    min-height: 0;
+  }
+  .pr-doc {
+    padding: 0;
+  }
+  .pr-sheet {
+    margin: 0;
+    box-shadow: none !important;
+    min-height: 296mm;
+    break-after: page;
+  }
+  .pr-sheet:last-child {
+    break-after: auto;
+  }
+  .pr-doc,
+  .pr-doc * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

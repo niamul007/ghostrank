@@ -12,6 +12,7 @@ import { ScansListPage } from "./pages/Scans/ScansList"
 import { ScanDetailPage } from "./pages/Scans/ScanDetail"
 import { ReportsListPage } from "./pages/Reports/ReportsList"
 import { ReportDetailPage } from "./pages/Reports/ReportDetail"
+import { ReportPrintPage } from "./pages/Reports/ReportPrint"
 
 function Protected({ children }: { children: React.ReactNode }) {
   return (
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/scans/:id" element={<Protected><ScanDetailPage /></Protected>} />
           <Route path="/reports" element={<Protected><ReportsListPage /></Protected>} />
           <Route path="/reports/:id" element={<Protected><ReportDetailPage /></Protected>} />
+          <Route path="/reports/:id/print" element={<ProtectedRoute><ReportPrintPage /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

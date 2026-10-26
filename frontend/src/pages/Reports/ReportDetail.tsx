@@ -170,7 +170,7 @@ export function ReportDetailPage() {
 
 function BackLink() {
   return (
-    <Link to="/reports" className="mb-5 inline-flex items-center gap-1.5 text-sm text-text-faint hover:text-text">
+    <Link to="/reports" className="no-print mb-5 inline-flex items-center gap-1.5 text-sm text-text-faint hover:text-text">
       <IconArrowLeft className="h-4 w-4" />
       All reports
     </Link>

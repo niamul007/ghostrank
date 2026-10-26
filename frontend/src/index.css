@@ -161,3 +161,92 @@ body {
 .animate-pulse-soft {
   animation: pulse-soft 1.6s ease-in-out infinite;
 }
+
+/* ── Print (v2 report "Save as PDF") ─────────────────────────────────
+   Screen is untouched. In print the dark tokens are swapped for a light
+   palette, the app shell is hidden and the layout is un-clipped so the
+   whole report flows across pages. */
+@media print {
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #eceef2;
+    --surface-hover: #eceef2;
+    --border: #c9ccd4;
+    --border-soft: #dcdfe5;
+    --text: #14141a;
+    --text-dim: #3d3d48;
+    --text-faint: #5c5c68;
+    --accent: #5b3fd1;
+    --good: #0f8a5f;
+    --warn: #a86a00;
+    --bad: #c62828;
+    color-scheme: light;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #14141a;
+  }
+
+  /* Let the page flow instead of scrolling inside a fixed-height shell. */
+  .print-shell,
+  .print-main {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .print-main > div {
+    max-width: none !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Keep gauge and bar colours on paper. */
+  svg,
+  svg *,
+  [class*="bg-good"],
+  [class*="bg-warn"],
+  [class*="bg-bad"],
+  [class*="bg-accent"],
+  [class*="bg-surface-2"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Show finished bars/gauge even if the mount animation hasn't run. */
+  [class*="transition"] {
+    transition: none !important;
+  }
+
+  .report-section,
+  .report-section > *,
+  .rounded-xl,
+  blockquote {
+    break-inside: avoid;
+  }
+
+  .report-section-title {
+    break-after: avoid;
+  }
+
+  .report-footer {
+    break-inside: avoid;
+  }
+
+  [role="tooltip"] {
+    display: none !important;
+  }
+}

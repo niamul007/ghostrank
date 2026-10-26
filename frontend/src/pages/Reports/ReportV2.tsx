@@ -1,4 +1,5 @@
 import { PageHeader } from "../../components/PageHeader"
+import { Button } from "../../components/Button"
 import { Card } from "../../components/Card"
 import { ScoreGauge } from "../../components/report/ScoreGauge"
 import { BarRow } from "../../components/report/BarRow"
@@ -12,7 +13,7 @@ const GROUP_LABEL: Record<ReportDataV2["byGroup"][number]["group"], string> = {
 }
 
 function SectionTitle({ children }: { children: string }) {
-  return <h2 className="mb-3 font-display text-sm font-semibold text-text">{children}</h2>
+  return <h2 className="report-section-title mb-3 font-display text-sm font-semibold text-text">{children}</h2>
 }
 
 /** Version 2 report. Score and charts come from counted runs only; reputation answers are shown raw. */
@@ -27,6 +28,11 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
         eyebrow={business.niche}
         title={business.name}
         description={`${place} · scanned ${formatDate(report.scanDate)}`}
+        action={
+          <Button variant="secondary" size="sm" className="no-print" onClick={() => window.print()}>
+            Save as PDF
+          </Button>
+        }
       />
 
       {hasRuns ? (
@@ -51,7 +57,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
             </div>
           </Card>
 
-          <section className="mb-8">
+          <section className="report-section mb-8">
             <SectionTitle>By question type</SectionTitle>
             <Card className="flex flex-col gap-4">
               {report.byGroup.map((g) => {
@@ -70,7 +76,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
             </Card>
           </section>
 
-          <section className="mb-8">
+          <section className="report-section mb-8">
             <SectionTitle>Question by question</SectionTitle>
             <Card padded={false} className="divide-y divide-border-soft">
               {report.questions.map((q) => {
@@ -93,7 +99,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
             </Card>
           </section>
 
-          <section className="mb-8">
+          <section className="report-section mb-8">
             <SectionTitle>Who the AI recommends instead</SectionTitle>
             <Card>
               {report.named.others.length === 0 ? (
@@ -121,7 +127,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
             </Card>
           </section>
 
-          <section className="mb-8">
+          <section className="report-section mb-8">
             <SectionTitle>Your chosen competitors</SectionTitle>
             <Card>
               {report.named.chosenCompetitors.length === 0 ? (
@@ -155,7 +161,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
       )}
 
       {report.reputation.answers.length > 0 ? (
-        <section className="mb-8">
+        <section className="report-section mb-8">
           <SectionTitle>What the AI says when asked directly</SectionTitle>
           <p className="-mt-2 mb-3 text-xs text-text-faint">AI answers can be inaccurate.</p>
           <div className="flex flex-col gap-3">
@@ -173,7 +179,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
         </section>
       ) : null}
 
-      <footer className="border-t border-border-soft pt-4 text-xs text-text-faint">
+      <footer className="report-footer border-t border-border-soft pt-4 text-xs text-text-faint">
         <p>
           Generated {formatDateTime(report.generatedAt)} using {({ claude: 'Claude' } as Record<string, string>)[report.model.provider] ?? report.model.provider} ({report.model.model})
         </p>

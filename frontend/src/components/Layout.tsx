@@ -8,6 +8,7 @@ import {
   IconLogout,
   IconReports,
   IconScans,
+  IconSettings,
 } from "./icons"
 
 const NAV_ITEMS = [
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
   { to: "/clients", label: "Clients", icon: IconClients, end: false },
   { to: "/scans", label: "Scans", icon: IconScans, end: false },
   { to: "/reports", label: "Reports", icon: IconReports, end: false },
+  { to: "/settings", label: "Settings", icon: IconSettings, end: false },
 ]
 
 export function Layout({ children }: { children: ReactNode }) {

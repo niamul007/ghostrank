@@ -70,6 +70,16 @@ export function IconReports(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function IconSettings(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 5.5h8M15 5.5h2M3 14.5h2M9 14.5h8" />
+      <circle cx="13" cy="5.5" r="2" />
+      <circle cx="7" cy="14.5" r="2" />
+    </svg>
+  )
+}
+
 export function IconLogout(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>

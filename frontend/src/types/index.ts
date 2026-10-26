@@ -318,3 +318,20 @@ export interface ReportListItem {
     createdAt: string
   }
 }
+
+// Agency branding (GET/PATCH /api/agency)
+
+export interface AgencyBranding {
+  id: string
+  name: string
+  logo: string | null
+  /** Saved as a one-element array of hex colours, or null when unset. */
+  brandColors: string[] | null
+}
+
+/** "" clears brandColor / logoUrl. */
+export interface UpdateAgencyPayload {
+  name?: string
+  brandColor?: string
+  logoUrl?: string
+}

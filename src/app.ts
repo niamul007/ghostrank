@@ -2,6 +2,7 @@ import express from "express"
 import cors from "cors"
 import authRoutes from "./routes/auth.routes"
 import clientRoutes from "./routes/client.routes"
+import agencyRoutes from "./routes/agency.routes"
 import scanRoutes from "./routes/scan.routes"
 import reportRoutes from "./routes/report.routes"
 import { errorHandler } from "./middleware/errorHandler"
@@ -41,6 +42,7 @@ app.get("/health", (_req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes)
+app.use("/api/agency", agencyRoutes)
 app.use("/api/clients", clientRoutes)
 app.use("/api", scanRoutes)
 app.use("/api", reportRoutes)

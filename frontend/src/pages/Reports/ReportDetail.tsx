@@ -15,10 +15,11 @@ import { getReport } from "../../api/reports"
 import { getErrorMessage } from "../../api/client"
 import { PLATFORM_LABEL } from "../../lib/reportPresentation"
 import { formatDateTime } from "../../lib/format"
-import type { ReportData } from "../../types"
+import { ReportV2 } from "./ReportV2"
+import type { Report } from "../../types"
 
 interface LocationState {
-  report?: ReportData
+  report?: Report
 }
 
 export function ReportDetailPage() {
@@ -28,7 +29,7 @@ export function ReportDetailPage() {
   // Only trust router state if it is for the report in the URL.
   const passedReport = stateReport?.id === id ? stateReport : undefined
 
-  const [report, setReport] = useState<ReportData | null>(passedReport ?? null)
+  const [report, setReport] = useState<Report | null>(passedReport ?? null)
   const [error, setError] = useState<string | null>(null)
   const [selectedType, setSelectedType] = useState<string | null>(null)
 
@@ -50,18 +51,21 @@ export function ReportDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const visibleResults = report
+  // Version 1 only; version 2 renders through ReportV2 below.
+  const v1 = report?.version === 1 ? report : null
+
+  const visibleResults = v1
     ? selectedType
-      ? report.results.filter((r) => r.category === selectedType)
-      : report.results
+      ? v1.results.filter((r) => r.category === selectedType)
+      : v1.results
     : []
 
   // Top fixes already show their recommendation text; don't repeat it below.
-  const topFixTexts = new Set(report?.topFixes?.map((f) => f.recommendation))
-  const remainingRecommendations = report
-    ? report.topFixes
-      ? report.recommendations.filter((rec) => !topFixTexts.has(rec))
-      : report.recommendations
+  const topFixTexts = new Set(v1?.topFixes?.map((f) => f.recommendation))
+  const remainingRecommendations = v1
+    ? v1.topFixes
+      ? v1.recommendations.filter((rec) => !topFixTexts.has(rec))
+      : v1.recommendations
     : []
 
   if (error) {
@@ -74,6 +78,15 @@ export function ReportDetailPage() {
   }
 
   if (!report) return <PageSpinner label="Loading report…" />
+
+  if (report.version === 2) {
+    return (
+      <>
+        <BackLink />
+        <ReportV2 report={report} />
+      </>
+    )
+  }
 
   return (
     <>

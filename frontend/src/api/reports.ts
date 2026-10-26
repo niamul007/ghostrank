@@ -1,15 +1,15 @@
 import { api } from "./client"
-import type { ApiSuccess, ReportData, ReportListItem } from "../types"
+import type { ApiSuccess, Report, ReportListItem } from "../types"
 
-/** Generates (or reuses) the report for a completed scan. */
-export async function createReport(scanId: string): Promise<ReportData> {
-  const res = await api.post<ApiSuccess<ReportData>>(`/api/scans/${scanId}/report`)
+/** Generates (or reuses) the report for a completed scan. Narrow on `version`. */
+export async function createReport(scanId: string): Promise<Report> {
+  const res = await api.post<ApiSuccess<Report>>(`/api/scans/${scanId}/report`)
   return res.data.data
 }
 
-/** Loads an existing report — same ReportData shape as createReport(). */
-export async function getReport(id: string): Promise<ReportData> {
-  const res = await api.get<ApiSuccess<ReportData>>(`/api/reports/${id}`)
+/** Loads an existing report — same Report shape as createReport(). */
+export async function getReport(id: string): Promise<Report> {
+  const res = await api.get<ApiSuccess<Report>>(`/api/reports/${id}`)
   return res.data.data
 }
 

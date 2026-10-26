@@ -229,8 +229,36 @@ describe("reputation answers", () => {
       }),
     )
     expect(report.reputation.answers).toHaveLength(3)
-    expect(report.reputation.answers[0]).toHaveLength(400)
+    expect(report.reputation.answers[0]).toBe("x".repeat(400) + "…")
     expect(report.reputation.answers.slice(1)).toEqual(["short answer", "third"])
+  })
+
+  it("cuts a long answer at a word boundary with an ellipsis", () => {
+    const words = Array.from({ length: 200 }, (_, i) => `word${i}`)
+    const long = words.join(" ")
+    const report = buildReportV2(
+      input({ runs: [run({ questionId: "rep", scored: false, answer: long })] }),
+    )
+    const out = report.reputation.answers[0]
+    expect(out.endsWith("…")).toBe(true)
+    expect(out.length).toBeLessThanOrEqual(401)
+    const lastWord = out.slice(0, -1).split(" ").pop() as string
+    expect(words).toContain(lastWord)
+  })
+
+  it("trims trailing punctuation before the ellipsis", () => {
+    const text = "a".repeat(395) + ", bbbbbbbbbb"
+    const report = buildReportV2(
+      input({ runs: [run({ questionId: "rep", scored: false, answer: text })] }),
+    )
+    expect(report.reputation.answers[0]).toBe("a".repeat(395) + "…")
+  })
+
+  it("leaves a short answer unchanged", () => {
+    const report = buildReportV2(
+      input({ runs: [run({ questionId: "rep", scored: false, answer: "Short and sweet." })] }),
+    )
+    expect(report.reputation.answers[0]).toBe("Short and sweet.")
   })
 })
 

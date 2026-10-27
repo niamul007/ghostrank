@@ -72,6 +72,7 @@ export function createClaudeProvider(deps: ClaudeProviderDeps = {}): AIProvider 
           inputTokens: result.usage.inputTokens,
           outputTokens: result.usage.outputTokens,
           durationMs: Date.now() - startTime,
+          sources: result.sources,
         }
       } catch (error) {
         // Full provider error stays in the server log only

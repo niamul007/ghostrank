@@ -8,6 +8,7 @@ export interface ProviderAnswer {
   inputTokens?: number
   outputTokens?: number
   durationMs: number
+  sources?: { title: string; url: string }[]
 }
 
 export interface AIProvider {

@@ -20,7 +20,16 @@ import type { AIResponse, BuiltPrompt, ClaudeUsage, Platform } from "../types"
 // Output cap for Claude answers. Adaptive thinking is on by default for
 // this model and its tokens count against the cap, so leave headroom
 // beyond the 5-line list.
-export const CLAUDE_MAX_TOKENS = 1500
+export const CLAUDE_MAX_TOKENS = 4000
+
+// How many times a paused (pause_turn) web search turn is sent back to Claude.
+const MAX_PAUSE_CONTINUATIONS = 2
+
+/** A web page Claude searched or cited. */
+export interface ClaudeSource {
+  title: string
+  url: string
+}
 
 // Pause before retrying a Claude call that came back with no usable text.
 const EMPTY_ANSWER_RETRY_DELAY_MS = 1000
@@ -217,7 +226,7 @@ async function queryGemini(promptText: string): Promise<string> {
  */
 async function queryClaude(
   promptText: string
-): Promise<{ text: string; usage: ClaudeUsage }> {
+): Promise<{ text: string; usage: ClaudeUsage; sources: ClaudeSource[] }> {
   try {
     return await queryClaudeOnce(promptText)
   } catch (error) {
@@ -228,47 +237,91 @@ async function queryClaude(
   }
 }
 
-/** One Claude call. Throws EmptyAnswerError if there is no non-blank text block. */
+/**
+ * One Claude call, with web search. Throws EmptyAnswerError if there is no
+ * non-blank text. A "pause_turn" stop is sent back (up to
+ * MAX_PAUSE_CONTINUATIONS times) so Claude can continue; usage is summed
+ * over every round.
+ */
 export async function queryClaudeOnce(
   promptText: string,
   client: Anthropic = getClaudeClient()
-): Promise<{ text: string; usage: ClaudeUsage }> {
-  const response = await client.messages.create({
-    model: aiConfig.claude.model,
-    max_tokens: CLAUDE_MAX_TOKENS,
-    output_config: { effort: "low" },
-    system: [
-      {
-        type: "text",
-        text: AI_SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [{ role: "user", content: promptText }],
-  })
+): Promise<{ text: string; usage: ClaudeUsage; sources: ClaudeSource[] }> {
+  const messages: Anthropic.MessageParam[] = [
+    { role: "user", content: promptText },
+  ]
+  const usage: ClaudeUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 0,
+  }
+  const textParts: string[] = []
+  const blockTypes: string[] = []
+  const sourcesByUrl = new Map<string, ClaudeSource>()
+  const addSource = (title: string | null | undefined, url: string) => {
+    if (!sourcesByUrl.has(url)) sourcesByUrl.set(url, { title: title ?? "", url })
+  }
+  let stopReason: string | null = null
 
-  if (response.stop_reason === "max_tokens") {
-    console.warn("Claude answer hit max_tokens (possible truncation)")
+  for (let round = 0; ; round++) {
+    const response = await client.messages.create({
+      model: aiConfig.claude.model,
+      max_tokens: CLAUDE_MAX_TOKENS,
+      output_config: { effort: "low" },
+      system: [
+        {
+          type: "text",
+          text: AI_SYSTEM_PROMPT,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      tools: [{ type: "web_search_20260318", name: "web_search", max_uses: 3 }],
+      messages,
+    })
+
+    usage.inputTokens += response.usage.input_tokens
+    usage.outputTokens += response.usage.output_tokens
+    usage.cacheCreationInputTokens += response.usage.cache_creation_input_tokens ?? 0
+    usage.cacheReadInputTokens += response.usage.cache_read_input_tokens ?? 0
+    stopReason = response.stop_reason
+
+    if (response.stop_reason === "max_tokens") {
+      console.warn("Claude answer hit max_tokens (possible truncation)")
+    }
+
+    for (const block of response.content) {
+      blockTypes.push(block.type)
+      if (block.type === "text") {
+        textParts.push(block.text)
+        for (const citation of block.citations ?? []) {
+          if (citation.type === "web_search_result_location") {
+            addSource(citation.title, citation.url)
+          }
+        }
+      } else if (
+        block.type === "web_search_tool_result" &&
+        Array.isArray(block.content)
+      ) {
+        for (const result of block.content) addSource(result.title, result.url)
+      }
+    }
+
+    if (response.stop_reason !== "pause_turn" || round >= MAX_PAUSE_CONTINUATIONS) {
+      break
+    }
+    messages.push({
+      role: "assistant",
+      content: response.content as Anthropic.ContentBlockParam[],
+    })
   }
 
-  const textBlock = response.content.find((block) => block.type === "text")
-
-  if (textBlock?.type !== "text" || textBlock.text.trim() === "") {
-    throw new EmptyAnswerError(
-      response.stop_reason,
-      response.content.map((block) => block.type)
-    )
+  const text = textParts.join("")
+  if (text.trim() === "") {
+    throw new EmptyAnswerError(stopReason, blockTypes)
   }
 
-  return {
-    text: textBlock.text,
-    usage: {
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-      cacheCreationInputTokens: response.usage.cache_creation_input_tokens ?? 0,
-      cacheReadInputTokens: response.usage.cache_read_input_tokens ?? 0,
-    },
-  }
+  return { text, usage, sources: [...sourcesByUrl.values()] }
 }
 
 // ──────────────────────────────────────────

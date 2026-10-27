@@ -13,7 +13,13 @@ import type { SaveRun } from "./runner"
 export function createPrismaSaveRun(): SaveRun {
   return async (row) => {
     try {
-      await prisma.scanRun.create({ data: row })
+      const { sources, ...rest } = row
+      await prisma.scanRun.create({
+        data: {
+          ...rest,
+          sources: sources ? (sources as Prisma.InputJsonValue) : Prisma.DbNull,
+        },
+      })
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

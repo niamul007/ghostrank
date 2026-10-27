@@ -14,6 +14,7 @@ export const NICHE_PHRASES: Record<string, NichePhrase> = {
   "Dental clinic": { singular: "dentist", plural: "dentists" },
   "Hospital or diagnostic center": { singular: "hospital or diagnostic center", plural: "hospitals and diagnostic centers" },
   "Salon or beauty parlour": { singular: "beauty salon", plural: "beauty salons" },
+  "Hair salon": { singular: "hair salon", plural: "hair salons" },
   "Gym or fitness": { singular: "gym", plural: "gyms" },
   "Coaching center or tutoring": { singular: "tutoring center", plural: "tutoring centers" },
   "School or university": { singular: "school or university", plural: "schools and universities" },

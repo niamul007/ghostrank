@@ -24,6 +24,18 @@ describe("buildQuestions", () => {
     expect(QUESTION_SET_VERSION).toBe("v2")
   })
 
+  it("builds hair salon questions", () => {
+    const qs = buildQuestions({
+      ...base,
+      niche: "Hair salon",
+      city: "Bath",
+      knownFor: ["Haircuts", "Hair coloring"],
+    }).map((q) => q.text)
+    expect(qs).toContain("What is the best hair salon in Bath?")
+    expect(qs).toContain("Compare the top hair salons in Bath.")
+    expect(qs).toContain("Which hair salons in Bath are best known for haircuts?")
+  })
+
   it("scores 7 and leaves reputation unscored", () => {
     const qs = buildQuestions(base)
     expect(qs.filter((q) => q.scored)).toHaveLength(7)
@@ -172,14 +184,14 @@ describe("buildQuestions", () => {
 describe("NICHE_PHRASES", () => {
   const labels = [
     "Restaurant", "Cafe", "Sweet shop or bakery", "Clinic or doctor", "Dental clinic",
-    "Hospital or diagnostic center", "Salon or beauty parlour", "Gym or fitness",
+    "Hospital or diagnostic center", "Salon or beauty parlour", "Hair salon", "Gym or fitness",
     "Coaching center or tutoring", "School or university", "Real estate or developer",
     "Hotel or resort", "Travel agency", "Law firm", "Car repair or auto service",
     "Furniture or interior design", "Photography or event services", "Home services",
   ]
 
-  it("has an entry for each of the 18 labels and nothing else", () => {
-    expect(labels).toHaveLength(18)
+  it("has an entry for each of the 19 labels and nothing else", () => {
+    expect(labels).toHaveLength(19)
     expect(Object.keys(NICHE_PHRASES).sort()).toEqual([...labels].sort())
     for (const l of labels) {
       expect(NICHE_PHRASES[l].singular).toBeTruthy()

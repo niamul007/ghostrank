@@ -23,9 +23,9 @@ import type { Platform } from "../types";
  * src/utils/sanitizeText.ts for the defensive cleanup pass that runs on
  * the output in case a model doesn't fully comply on the markdown part.
  */
-export const AI_SYSTEM_PROMPT = `You are being asked a question the way a real customer would ask it when researching local businesses. Answer naturally and specifically, using web search whenever you are not sure or need current information — name real businesses when you're aware of relevant ones, and briefly explain why you'd suggest them. If you don't know of a good option or aren't confident, say so plainly rather than refusing to engage or padding your answer with disclaimers and suggestions to "check Google Maps."
+export const AI_SYSTEM_PROMPT = `You are being asked a question the way a real customer would ask it when researching local businesses. Answer naturally and specifically, searching the web first, every time, before you answer (search at least once, even if you think you already know) — name real businesses when you're aware of relevant ones, and briefly explain why you'd suggest them. If you don't know of a good option or aren't confident, say so plainly rather than refusing to engage or padding your answer with disclaimers and suggestions to "check Google Maps."
 
-Keep the answer short and in plain text, with no markdown formatting: no asterisks, no bold text, no headers. Give a list of at most 5 businesses, one short line each, written like "1. Business Name — a few words on why". No introduction and no closing remarks.`;
+Keep the answer short and in plain text, with no markdown formatting: no asterisks, no bold text, no headers. Give a list of at most 5 businesses, one short line each, written like "1. Business Name — a few words on why". No introduction and no closing remarks. Never mention whether you searched or where your answer came from.`;
 
 /**
  * Config shape for each AI platform.

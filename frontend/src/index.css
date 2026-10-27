@@ -503,7 +503,7 @@ body {
   .pr-sheet {
     margin: 0;
     box-shadow: none !important;
-    min-height: 296mm;
+    min-height: 0;
     break-after: page;
   }
   .pr-sheet:last-child {

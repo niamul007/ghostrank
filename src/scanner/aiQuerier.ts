@@ -299,11 +299,13 @@ export async function queryClaudeOnce(
             addSource(citation.title, citation.url)
           }
         }
-      } else if (
-        block.type === "web_search_tool_result" &&
-        Array.isArray(block.content)
-      ) {
-        for (const result of block.content) addSource(result.title, result.url)
+      } else if (block.type === "web_search_tool_result") {
+        // Text before a search result is Claude thinking aloud; keep only
+        // what comes after the last result.
+        textParts.length = 0
+        if (Array.isArray(block.content)) {
+          for (const result of block.content) addSource(result.title, result.url)
+        }
       }
     }
 

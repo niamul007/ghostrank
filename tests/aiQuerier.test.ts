@@ -8,7 +8,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
   },
 }))
 
-import { queryAllPlatforms, CLAUDE_MAX_TOKENS } from "../src/scanner/aiQuerier"
+import { queryAllPlatforms, queryClaudeOnce, CLAUDE_MAX_TOKENS } from "../src/scanner/aiQuerier"
 import type { BuiltPrompt } from "../src/types"
 
 const prompt: BuiltPrompt = {
@@ -94,5 +94,71 @@ describe("queryAllPlatforms (Claude)", () => {
     const result = await run()
     expect(create).toHaveBeenCalledTimes(1)
     expect(result.failures[0].error).toBe("Error (HTTP 500)")
+  })
+})
+
+describe("queryClaudeOnce (pre-search narration)", () => {
+  beforeEach(() => {
+    create.mockReset()
+  })
+
+  const search = (id: string, url: string, title: string) => [
+    { type: "server_tool_use", id, name: "web_search", input: { query: "q" } },
+    {
+      type: "web_search_tool_result",
+      tool_use_id: id,
+      content: [{ type: "web_search_result", title, url }],
+    },
+  ]
+
+  it("drops text before the search result and keeps its sources", async () => {
+    create.mockResolvedValue({
+      stop_reason: "end_turn",
+      content: [
+        { type: "text", text: "r is apparently a string." },
+        ...search("s1", "https://example.com/a", "Example A"),
+        { type: "text", text: "1. Vezo Coffee" },
+      ],
+      usage,
+    })
+    const result = await queryClaudeOnce("q")
+    expect(result.text).toBe("1. Vezo Coffee")
+    expect(result.sources).toEqual([
+      { title: "Example A", url: "https://example.com/a" },
+    ])
+  })
+
+  it("keeps all text when there was no search", async () => {
+    create.mockResolvedValue({
+      stop_reason: "end_turn",
+      content: [
+        { type: "text", text: "1. Mithai" },
+        { type: "text", text: " — sweets" },
+      ],
+      usage,
+    })
+    const result = await queryClaudeOnce("q")
+    expect(result.text).toBe("1. Mithai — sweets")
+    expect(result.sources).toEqual([])
+  })
+
+  it("keeps only the text after the last of several search rounds", async () => {
+    create.mockResolvedValue({
+      stop_reason: "end_turn",
+      content: [
+        { type: "text", text: "first narration" },
+        ...search("s1", "https://example.com/a", "A"),
+        { type: "text", text: "second narration" },
+        ...search("s2", "https://example.com/b", "B"),
+        { type: "text", text: "1. Final answer" },
+      ],
+      usage,
+    })
+    const result = await queryClaudeOnce("q")
+    expect(result.text).toBe("1. Final answer")
+    expect(result.sources.map((s) => s.url)).toEqual([
+      "https://example.com/a",
+      "https://example.com/b",
+    ])
   })
 })

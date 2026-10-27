@@ -26,6 +26,7 @@ export interface RunRow {
   inputTokens: number | null
   outputTokens: number | null
   durationMs: number
+  sources?: { title: string; url: string }[] | null
 }
 
 export type SaveRun = (row: RunRow) => Promise<void>
@@ -113,6 +114,7 @@ export async function runQuestions(options: RunQuestionsOptions): Promise<RunSum
         inputTokens: result.inputTokens ?? null,
         outputTokens: result.outputTokens ?? null,
         durationMs: result.durationMs,
+        sources: result.sources ?? [],
       }
       succeeded++
     } catch (error) {
@@ -124,6 +126,7 @@ export async function runQuestions(options: RunQuestionsOptions): Promise<RunSum
         inputTokens: null,
         outputTokens: null,
         durationMs: Date.now() - startTime,
+        sources: null,
       }
       failed++
     }

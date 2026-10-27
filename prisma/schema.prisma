@@ -115,6 +115,7 @@ model ScanRun {
   errorLabel   String?
   inputTokens  Int?
   outputTokens Int?
+  sources      Json?
   durationMs   Int?
   createdAt    DateTime  @default(now())
 

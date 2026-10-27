@@ -116,6 +116,40 @@ describe("runQuestions", () => {
     }
   })
 
+  it("saves the provider's sources on a successful run", async () => {
+    const sources = [{ title: "Acme", url: "https://acme.example" }]
+    const provider: AIProvider = {
+      name: "fake",
+      model: "fake-1",
+      async ask() {
+        return { text: "ok", durationMs: 1, sources }
+      },
+    }
+    const { rows, saveRun } = fakeSave()
+    await runQuestions({ scanId: "s1", questions: questions.slice(0, 1), provider, saveRun })
+    expect(rows).toHaveLength(3)
+    for (const row of rows) expect(row.sources).toEqual(sources)
+  })
+
+  it("saves sources as [] when the provider returns none", async () => {
+    const { rows, saveRun } = fakeSave()
+    await runQuestions({ scanId: "s1", questions: questions.slice(0, 1), provider: fakeProvider(), saveRun })
+    for (const row of rows) expect(row.sources).toEqual([])
+  })
+
+  it("saves sources as null on a failed run", async () => {
+    const provider = fakeProvider(async () => {
+      throw new ProviderError("Bad key", false)
+    })
+    const { rows, saveRun } = fakeSave()
+    await runQuestions({ scanId: "s1", questions: questions.slice(0, 1), provider, saveRun })
+    expect(rows).toHaveLength(3)
+    for (const row of rows) {
+      expect(row.status).toBe("FAILED")
+      expect(row.sources).toBeNull()
+    }
+  })
+
   it("keeps each answer with its own run when jobs finish out of order", async () => {
     // Earlier questions answer slower, so they finish last
     const provider = fakeProvider(async (text) => {

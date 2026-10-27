@@ -134,6 +134,31 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
             </Card>
           </section>
 
+          {report.sources && report.sources.domains.length > 0 ? (
+            <section className="report-section mb-8">
+              <SectionTitle>Websites the AI looked at</SectionTitle>
+              <Card>
+                <div className="flex flex-col gap-4">
+                  {report.sources.domains.map((d) => (
+                    <BarRow
+                      key={d.domain}
+                      label={d.domain}
+                      value={d.runs}
+                      max={report.sources!.totalRuns}
+                      tone="neutral"
+                      readout={`in ${d.runs} of ${report.sources!.totalRuns} answers`}
+                      tooltip={`${d.domain}: in ${d.runs} of ${report.sources!.totalRuns} answers`}
+                    />
+                  ))}
+                </div>
+                <p className="mt-5 text-xs text-text-faint">
+                  Pages the AI came across while searching. Getting listed or improved on these sites is a way to be
+                  found.
+                </p>
+              </Card>
+            </section>
+          ) : null}
+
           <section className="report-section mb-8">
             <SectionTitle>Your chosen competitors</SectionTitle>
             <Card>

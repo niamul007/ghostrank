@@ -274,6 +274,7 @@ function buildReportForScan(scan: LoadedScan, reportId: string, createdAt: Date)
         scored: r.scored,
         status: r.status,
         answer: r.answer,
+        sources: r.sources,
         provider: r.provider,
         model: r.model,
       })),

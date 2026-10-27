@@ -108,6 +108,7 @@ export function PrintReportV2({ report }: { report: ReportDataV2 }) {
   const hasRuns = report.basedOnRuns > 0
   const provider = PROVIDER_LABEL[report.model.provider] ?? report.model.provider
   const topOthers = report.named.others.slice(0, 5)
+  const topSources = report.sources?.domains.slice(0, 5) ?? []
 
   return (
     <div className="pr-doc" style={{ "--pr-accent": accent } as React.CSSProperties}>
@@ -176,6 +177,25 @@ export function PrintReportV2({ report }: { report: ReportDataV2 }) {
                   ))
                 )}
               </div>
+
+              {topSources.length > 0 && report.sources ? (
+                <>
+                  <h2 className="pr-h2">Websites the AI looked at</h2>
+                  <div className="pr-card">
+                    {topSources.map((d) => (
+                      <Bar
+                        key={d.domain}
+                        label={d.domain}
+                        percent={report.sources!.totalRuns > 0 ? (d.runs / report.sources!.totalRuns) * 100 : 0}
+                        detail={`in ${d.runs} of ${report.sources!.totalRuns} answers`}
+                      />
+                    ))}
+                    <p className="pr-muted pr-small" style={{ margin: "4mm 0 0" }}>
+                      Pages the AI came across while searching. Getting listed or improved on these sites is a way to be found.
+                    </p>
+                  </div>
+                </>
+              ) : null}
 
               <h2 className="pr-h2">Your chosen competitors</h2>
               <div className="pr-card">

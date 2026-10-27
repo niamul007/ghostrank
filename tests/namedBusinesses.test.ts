@@ -49,6 +49,24 @@ describe("aggregateNamedBusinesses", () => {
     expect(result.others.find((o) => o.name === "Bata")?.runs).toBe(1)
   })
 
+  it("merges British and American spellings, counting once per run even in the same answer", () => {
+    const result = agg([
+      run("1. Neighbourhood\n2. Neighborhood Coffee"),
+      run("1. Neighborhood Coffee"),
+    ])
+    expect(result.others).toEqual([{ name: "Neighborhood Coffee", runs: 2 }])
+  })
+
+  it("shows the most frequent original spelling after a spelling fold", () => {
+    const result = agg([run("1. Neighbourhood"), run("1. Neighbourhood"), run("1. Neighborhood")])
+    expect(result.others).toEqual([{ name: "Neighbourhood", runs: 3 }])
+  })
+
+  it("keeps different businesses separate even when their spelling folds to a shared word", () => {
+    const result = agg([run("1. Harbour Fish Market\n2. Harbor Bakery")])
+    expect(result.others.map((o) => o.name).sort()).toEqual(["Harbor Bakery", "Harbour Fish Market"])
+  })
+
   it("excludes unscored (reputation) runs and failed runs", () => {
     const result = agg([
       run("1. Common complaints\n2. Bata", { scored: false }),

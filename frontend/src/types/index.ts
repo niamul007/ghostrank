@@ -291,6 +291,8 @@ export interface ReportDataV2 {
     chosenCompetitors: { name: string; runs: number; percent: number }[]
   }
   reputation: { answers: string[] }
+  /** Missing on reports saved before this field existed */
+  sources?: { domains: { domain: string; runs: number }[]; totalRuns: number }
   model: { provider: string; model: string }
 }
 

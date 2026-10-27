@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
+  aggregateSourceDomains,
   buildReportV2,
   normalizeBrandColors,
   scoreLabelFor,
@@ -338,5 +339,59 @@ describe("normalizeBrandColors", () => {
     expect(normalizeBrandColors(null)).toEqual([])
     expect(normalizeBrandColors(42)).toEqual([])
     expect(normalizeBrandColors([1, null, { a: { b: "#555555" } }])).toEqual([])
+  })
+})
+
+describe("aggregateSourceDomains", () => {
+  const src = (...urls: string[]) => urls.map((url) => ({ url }))
+
+  it("strips www. and lowercases", () => {
+    const out = aggregateSourceDomains([
+      run({ sources: src("https://www.Yelp.com/a") }),
+      run({ sources: src("https://yelp.com/b") }),
+    ])
+    expect(out).toEqual([{ domain: "yelp.com", runs: 2 }])
+  })
+
+  it("counts a domain once per run", () => {
+    const out = aggregateSourceDomains([
+      run({ sources: src("https://yelp.com/a", "https://www.yelp.com/b", "https://yelp.com/c") }),
+    ])
+    expect(out).toEqual([{ domain: "yelp.com", runs: 1 }])
+  })
+
+  it("ignores null and malformed sources", () => {
+    const out = aggregateSourceDomains([
+      run({ sources: null }),
+      run({ sources: undefined }),
+      run({ sources: "https://a.com" }),
+      run({ sources: { url: "https://a.com" } }),
+      run({ sources: [null, 5, "x", {}, { url: 7 }, { url: "not a url" }] }),
+      run({ sources: [{ url: "https://ok.com/x" }] }),
+    ])
+    expect(out).toEqual([{ domain: "ok.com", runs: 1 }])
+  })
+
+  it("caps at 8, sorted by runs then alphabetically", () => {
+    const runs = [run({ sources: src("https://z.com") }), run({ sources: src("https://z.com") })]
+    for (const d of "abcdefghi") runs.push(run({ sources: src(`https://${d}.com`) }))
+    const out = aggregateSourceDomains(runs)
+    expect(out).toHaveLength(8)
+    expect(out[0]).toEqual({ domain: "z.com", runs: 2 })
+    expect(out.slice(1).map((o) => o.domain)).toEqual(["a.com", "b.com", "c.com", "d.com", "e.com", "f.com", "g.com"])
+  })
+
+  it("ignores reputation (not scored) and failed runs", () => {
+    const out = aggregateSourceDomains([
+      run({ scored: false, sources: src("https://rep.com") }),
+      run({ status: "FAILED", sources: src("https://bad.com") }),
+      run({ sources: src("https://good.com") }),
+    ])
+    expect(out).toEqual([{ domain: "good.com", runs: 1 }])
+  })
+
+  it("is part of the report with totalRuns = counted runs", () => {
+    const report = buildReportV2(input({ runs: [run({ sources: src("https://good.com") })] }))
+    expect(report.sources).toEqual({ domains: [{ domain: "good.com", runs: 1 }], totalRuns: report.basedOnRuns })
   })
 })

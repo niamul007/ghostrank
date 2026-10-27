@@ -13,6 +13,7 @@ const WILSON_Z = 1.96
 const TOP_OTHERS = 10
 const MAX_REPUTATION_ANSWERS = 3
 const REPUTATION_ANSWER_CHARS = 400
+const TOP_SOURCE_DOMAINS = 8
 const GROUPS = ["find", "compare", "need"] as const
 
 // Cuts at a word boundary so a shown answer never ends mid-word.
@@ -77,10 +78,12 @@ export interface ReportDataV2 {
     chosenCompetitors: { name: string; runs: number; percent: number }[]
   }
   reputation: { answers: string[] }
+  sources: { domains: { domain: string; runs: number }[]; totalRuns: number }
   model: { provider: string; model: string }
 }
 
 export interface ReportV2Run {
+  sources?: unknown
   questionId: string
   group: string
   questionText: string
@@ -131,6 +134,39 @@ export function wilsonRange(mentioned: number, counted: number): { low: number; 
 
 const percentOf = (part: number, whole: number): number =>
   whole > 0 ? Math.round((part / whole) * 100) : 0
+
+/**
+ * Top domains the AI came across, over scored successful runs only.
+ * Each domain counts at most once per run. ScanRun.sources is untrusted Json.
+ */
+export function aggregateSourceDomains(
+  runs: ReportV2Run[],
+  limit = TOP_SOURCE_DOMAINS,
+): { domain: string; runs: number }[] {
+  const counts = new Map<string, number>()
+  for (const run of runs) {
+    if (!run.scored || run.status !== "SUCCESS" || !Array.isArray(run.sources)) continue
+    const seen = new Set<string>()
+    for (const item of run.sources) {
+      if (!item || typeof item !== "object") continue
+      const url = (item as { url?: unknown }).url
+      if (typeof url !== "string") continue
+      let host: string
+      try {
+        host = new URL(url).hostname.toLowerCase()
+      } catch {
+        continue
+      }
+      host = host.replace(/^www\./, "")
+      if (host) seen.add(host)
+    }
+    for (const d of seen) counts.set(d, (counts.get(d) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .map(([domain, n]) => ({ domain, runs: n }))
+    .sort((a, b) => b.runs - a.runs || (a.domain < b.domain ? -1 : a.domain > b.domain ? 1 : 0))
+    .slice(0, limit)
+}
 
 export function buildReportV2({ reportId, generatedAt, scan, client, agency, runs }: ReportV2Input): ReportDataV2 {
   const businessNames = [client.businessName, ...client.nameVariants]
@@ -216,6 +252,7 @@ export function buildReportV2({ reportId, generatedAt, scan, client, agency, run
       chosenCompetitors: named.chosenCompetitors.map(withPercent),
     },
     reputation: { answers },
+    sources: { domains: aggregateSourceDomains(runs), totalRuns: counted },
     model: { provider: modelRun?.provider ?? "", model: modelRun?.model ?? "" },
   }
 }

@@ -47,13 +47,13 @@ describe("queryAllPlatforms (Claude)", () => {
     vi.restoreAllMocks()
   })
 
-  it("sends effort low, max_tokens 1500 and no thinking field", async () => {
+  it("sends effort low, max_tokens 4000 and no thinking field", async () => {
     create.mockResolvedValue(good)
     await run()
     const req = create.mock.calls[0][0]
     expect(req.output_config).toEqual({ effort: "low" })
-    expect(req.max_tokens).toBe(1500)
-    expect(CLAUDE_MAX_TOKENS).toBe(1500)
+    expect(req.max_tokens).toBe(4000)
+    expect(CLAUDE_MAX_TOKENS).toBe(4000)
     expect("thinking" in req).toBe(false)
   })
 

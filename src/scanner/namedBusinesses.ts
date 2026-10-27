@@ -33,8 +33,19 @@ const GENERIC_WORDS = new Set([
   "of",
 ])
 
+// British -> American, used only to compare names; display keeps the original spelling.
+export const SPELLING_FOLDS: Record<string, string> = {
+  neighbourhood: "neighborhood",
+  harbour: "harbor",
+  centre: "center",
+  colour: "color",
+  flavour: "flavor",
+  favourite: "favorite",
+  theatre: "theater",
+}
+
 function coreWords(key: string): string[] {
-  const words = key.split(" ")
+  const words = key.split(" ").map((w) => SPELLING_FOLDS[w] ?? w)
   const core = words.filter((w) => !GENERIC_WORDS.has(w))
   return core.length > 0 ? core : words
 }

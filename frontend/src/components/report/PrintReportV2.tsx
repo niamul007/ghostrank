@@ -240,7 +240,7 @@ export function PrintReportV2({ report }: { report: ReportDataV2 }) {
           {report.reputation.answers.length > 0 ? (
             <>
               <h2 className="pr-h2">What the AI says when asked directly</h2>
-              {report.reputation.answers.map((answer, i) => (
+              {report.reputation.answers.slice(0, 2).map((answer, i) => (
                 <blockquote key={i} className="pr-quote">
                   “{answer}”
                 </blockquote>
@@ -249,17 +249,19 @@ export function PrintReportV2({ report }: { report: ReportDataV2 }) {
             </>
           ) : null}
 
-          <h2 className="pr-h2">How this was measured</h2>
-          <p className="pr-para">
-            This report is based on {report.basedOnRuns} AI answers to {report.questions.length} questions, asked 3
-            times each, using {provider} ({report.model.model}). The scan ran on {formatDate(report.scanDate)}. AI
-            answers vary, so results differ between scans and the score is best read as a range.
-          </p>
+          <div style={{ breakInside: "avoid" }}>
+            <h2 className="pr-h2">How this was measured</h2>
+            <p className="pr-para">
+              This report is based on {report.basedOnRuns} AI answers to {report.questions.length} questions, asked 3
+              times each, using {provider} ({report.model.model}). The scan ran on {formatDate(report.scanDate)}. AI
+              answers vary, so results differ between scans and the score is best read as a range.
+            </p>
 
-          <footer className="pr-footer">
-            <span>{agency.name ? `Prepared by ${agency.name}` : "Prepared with GhostRank"}</span>
-            <span>Generated {formatDateTime(report.generatedAt)}</span>
-          </footer>
+            <footer className="pr-footer">
+              <span>{agency.name ? `Prepared by ${agency.name}` : "Prepared with GhostRank"}</span>
+              <span>Generated {formatDateTime(report.generatedAt)}</span>
+            </footer>
+          </div>
         </div>
       </section>
     </div>

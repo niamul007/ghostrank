@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
+import { useBranding } from "../context/BrandingContext"
 import {
   GhostMark,
   IconClients,
@@ -24,6 +25,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const scrollRef = useRef<HTMLElement>(null)
+  const { logoUrl } = useBranding()
+  const [logoFailed, setLogoFailed] = useState(false)
+
+  // A new URL gets a fresh chance to load.
+  useEffect(() => setLogoFailed(false), [logoUrl])
 
   // The window no longer scrolls on desktop, so reset the content scroller on navigation.
   useEffect(() => {
@@ -34,6 +40,9 @@ export function Layout({ children }: { children: ReactNode }) {
     logout()
     navigate("/login", { replace: true })
   }
+
+  const logo = logoUrl.trim()
+  const showLogo = /^https?:\/\/\S+$/i.test(logo) && !logoFailed
 
   const displayName = identity?.name ?? identity?.email ?? agencyId ?? "Agency"
   const initial = displayName.trim().charAt(0).toUpperCase() || "?"
@@ -94,8 +103,17 @@ export function Layout({ children }: { children: ReactNode }) {
               <p className="text-sm font-medium text-text">{displayName}</p>
               <p className="text-xs text-text-faint font-mono">agency</p>
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft font-mono text-sm font-semibold text-accent">
-              {initial}
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-accent-soft font-mono text-sm font-semibold text-accent">
+              {showLogo ? (
+                <img
+                  src={logo}
+                  alt=""
+                  onError={() => setLogoFailed(true)}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                initial
+              )}
             </div>
           </div>
         </header>

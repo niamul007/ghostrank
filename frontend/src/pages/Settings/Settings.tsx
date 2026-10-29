@@ -7,20 +7,20 @@ import { ErrorBanner } from "../../components/ErrorBanner"
 import { PageSpinner } from "../../components/Spinner"
 import { getAgency, updateAgency } from "../../api/agency"
 import { getErrorMessage } from "../../api/client"
+import { useBranding } from "../../context/BrandingContext"
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 const FALLBACK_COLOR = "#1e3a5f"
 const PRESET_COLORS = ["#1e3a5f", "#0f766e", "#15803d", "#b45309", "#b91c1c", "#7c3aed", "#be185d", "#111827"]
-const HTTP_URL = /^https?:\/\/\S+$/i
 
 export function SettingsPage() {
+  const { setLogoUrl: setBrandingLogo } = useBranding()
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [name, setName] = useState("")
   const [color, setColor] = useState("")
   const [logoUrl, setLogoUrl] = useState("")
-  const [logoFailed, setLogoFailed] = useState(false)
 
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -43,9 +43,6 @@ export function SettingsPage() {
     load()
   }, [])
 
-  // A new URL gets a fresh chance to load.
-  useEffect(() => setLogoFailed(false), [logoUrl])
-
   const colorValid = color === "" || HEX.test(color)
   const swatch = HEX.test(color) ? color : null
 
@@ -60,6 +57,7 @@ export function SettingsPage() {
       setName(agency.name)
       setColor(agency.brandColors?.[0] ?? "")
       setLogoUrl(agency.logo ?? "")
+      setBrandingLogo(agency.logo ?? "")
       setSaved(true)
     } catch (err) {
       setSaveError(getErrorMessage(err))
@@ -70,8 +68,6 @@ export function SettingsPage() {
 
   if (loadError) return <ErrorBanner message={loadError} onRetry={load} />
   if (!loaded) return <PageSpinner label="Loading settings…" />
-
-  const showLogo = HTTP_URL.test(logoUrl.trim()) && !logoFailed
 
   return (
     <>
@@ -148,26 +144,16 @@ export function SettingsPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Input
-              label="Logo URL"
-              name="logoUrl"
-              type="url"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://example.com/logo.png"
-              maxLength={500}
-              hint="An http(s) link. Leave empty to clear."
-            />
-            {showLogo && (
-              <img
-                src={logoUrl.trim()}
-                alt="Logo preview"
-                onError={() => setLogoFailed(true)}
-                className="max-h-10 max-w-48 self-start rounded-md border border-border bg-white object-contain p-1"
-              />
-            )}
-          </div>
+          <Input
+            label="Logo URL"
+            name="logoUrl"
+            type="url"
+            value={logoUrl}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            placeholder="https://example.com/logo.png"
+            maxLength={500}
+            hint="An http(s) link. Leave empty to clear."
+          />
 
           {saveError && (
             <p role="alert" className="text-sm text-bad">

@@ -11,6 +11,8 @@ import { useAuth } from "./AuthContext"
 interface BrandingContextValue {
   logoUrl: string
   setLogoUrl: (logoUrl: string) => void
+  agencyName: string
+  setAgencyName: (agencyName: string) => void
 }
 
 const BrandingContext = createContext<BrandingContextValue | null>(null)
@@ -18,16 +20,20 @@ const BrandingContext = createContext<BrandingContextValue | null>(null)
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth()
   const [logoUrl, setLogoUrl] = useState("")
+  const [agencyName, setAgencyName] = useState("")
 
   useEffect(() => {
     if (!isAuthenticated) {
       setLogoUrl("")
+      setAgencyName("")
       return
     }
     let cancelled = false
     getAgency()
       .then((agency) => {
-        if (!cancelled) setLogoUrl(agency.logo ?? "")
+        if (cancelled) return
+        setLogoUrl(agency.logo ?? "")
+        setAgencyName(agency.name ?? "")
       })
       .catch(() => {
         // The header falls back to the letter avatar.
@@ -37,7 +43,10 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated])
 
-  const value = useMemo(() => ({ logoUrl, setLogoUrl }), [logoUrl])
+  const value = useMemo(
+    () => ({ logoUrl, setLogoUrl, agencyName, setAgencyName }),
+    [logoUrl, agencyName],
+  )
 
   return <BrandingContext.Provider value={value}>{children}</BrandingContext.Provider>
 }

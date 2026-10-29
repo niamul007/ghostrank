@@ -25,7 +25,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const scrollRef = useRef<HTMLElement>(null)
-  const { logoUrl } = useBranding()
+  const { logoUrl, agencyName } = useBranding()
   const [logoFailed, setLogoFailed] = useState(false)
 
   // A new URL gets a fresh chance to load.
@@ -44,8 +44,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const logo = logoUrl.trim()
   const showLogo = /^https?:\/\/\S+$/i.test(logo) && !logoFailed
 
-  const displayName = identity?.name ?? identity?.email ?? agencyId ?? "Agency"
-  const initial = displayName.trim().charAt(0).toUpperCase() || "?"
+  const email = identity?.email ?? agencyId ?? "Agency"
+  const name = agencyName.trim()
+  const initial = (name || email).trim().charAt(0).toUpperCase() || "?"
 
   return (
     <div className="print-shell flex min-h-screen bg-bg sm:h-screen sm:supports-[height:100dvh]:h-dvh sm:min-h-0 sm:overflow-hidden">
@@ -99,9 +100,15 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
           <div className="hidden sm:block" />
           <div className="flex items-center gap-3">
-            <div className="text-right leading-tight">
-              <p className="text-sm font-medium text-text">{displayName}</p>
-              <p className="text-xs text-text-faint font-mono">agency</p>
+            <div className="max-w-[200px] text-right leading-tight">
+              <p className="truncate text-sm font-bold text-text" title={name || email}>
+                {name || email}
+              </p>
+              {name && (
+                <p className="truncate text-xs text-text-faint font-mono" title={email}>
+                  {email}
+                </p>
+              )}
             </div>
             <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-accent-soft font-mono text-sm font-semibold text-accent">
               {showLogo ? (

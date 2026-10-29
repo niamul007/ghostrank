@@ -14,7 +14,7 @@ const FALLBACK_COLOR = "#1e3a5f"
 const PRESET_COLORS = ["#1e3a5f", "#0f766e", "#15803d", "#b45309", "#b91c1c", "#7c3aed", "#be185d", "#111827"]
 
 export function SettingsPage() {
-  const { setLogoUrl: setBrandingLogo } = useBranding()
+  const { setLogoUrl: setBrandingLogo, setAgencyName: setBrandingName } = useBranding()
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -58,6 +58,7 @@ export function SettingsPage() {
       setColor(agency.brandColors?.[0] ?? "")
       setLogoUrl(agency.logo ?? "")
       setBrandingLogo(agency.logo ?? "")
+      setBrandingName(agency.name)
       setSaved(true)
     } catch (err) {
       setSaveError(getErrorMessage(err))

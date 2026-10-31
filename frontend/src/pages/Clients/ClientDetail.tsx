@@ -114,7 +114,9 @@ export function ClientDetailPage() {
             Asks Claude fresh questions and re-checks {client.businessName}'s AI visibility.
           </p>
           {scanError ? (
-            <p className="mt-2 text-sm text-bad">{scanError}</p>
+            <div className="mt-3">
+              <ErrorBanner message={scanError} />
+            </div>
           ) : null}
         </div>
         <Button

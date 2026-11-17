@@ -143,6 +143,7 @@ export function ReportV2({ report }: { report: ReportDataV2 }) {
                     <BarRow
                       key={d.domain}
                       label={d.domain}
+                      plainLabel
                       value={d.runs}
                       max={report.sources!.totalRuns}
                       tone="neutral"

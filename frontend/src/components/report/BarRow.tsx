@@ -12,18 +12,20 @@ interface BarRowProps {
   /** Fill color. Defaults to the green/amber/red scale by percentage; "neutral" is a single accent. */
   tone?: BarTone | "neutral"
   active?: boolean
+  /** Skip the capitalize styling, e.g. for domains that must stay lowercase. */
+  plainLabel?: boolean
   onClick?: () => void
 }
 
 /** One labelled horizontal bar. Becomes a toggle button when onClick is given. */
-export function BarRow({ label, value, max, readout, tooltip, tone, active = false, onClick }: BarRowProps) {
+export function BarRow({ label, value, max, readout, tooltip, tone, active = false, plainLabel = false, onClick }: BarRowProps) {
   const mounted = useMounted()
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0
 
   const body = (
     <>
       <span className="mb-1 flex items-baseline justify-between gap-3 text-xs">
-        <span className={`capitalize ${active ? "text-accent" : "text-text-dim"}`}>{label}</span>
+        <span className={`${plainLabel ? "" : "capitalize "}${active ? "text-accent" : "text-text-dim"}`}>{label}</span>
         <span className="font-mono tabular-nums text-text">{readout}</span>
       </span>
       <span className="block h-2 w-full overflow-hidden rounded-full border border-border-soft bg-surface-2">

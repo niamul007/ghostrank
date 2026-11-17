@@ -95,4 +95,26 @@ describe("aggregateNamedBusinesses", () => {
     const result = agg([run("1. Zed\n2. Alpha\n3. Mid"), run("1. Mid")])
     expect(result.others.map((o) => o.name)).toEqual(["Mid", "Alpha", "Zed"])
   })
+
+  it("counts a chosen competitor across plural/singular, 'the' and suffix variants", () => {
+    const result = agg(
+      [run("1. Lone Pine Coffee Roasters\n2. The Xo"), run("1. Xo Coffee Co\n2. Thump Coffee")],
+      ["Lone Pine Coffee Roaster", "Xo", "Thump Coffee"],
+    )
+    expect(result.chosenCompetitors).toEqual([
+      { name: "Lone Pine Coffee Roaster", runs: 1 },
+      { name: "Xo", runs: 2 },
+      { name: "Thump Coffee", runs: 1 },
+    ])
+    expect(result.others).toEqual([])
+  })
+
+  it("does not apply loose matching to the business's own name", () => {
+    const result = aggregateNamedBusinesses({
+      runs: [run("1. Lone Pine Coffee Roasters")],
+      businessNames: ["Lone Pine Coffee Roaster"],
+      competitorNames: [],
+    })
+    expect(result.others.map((o) => o.name)).toEqual(["Lone Pine Coffee Roasters"])
+  })
 })

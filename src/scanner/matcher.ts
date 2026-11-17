@@ -27,6 +27,28 @@ export function normalize(text: string): string {
     .trim()
 }
 
+const COMPANY_SUFFIXES = new Set(["co", "company", "inc", "llc", "ltd"])
+
+// Looser key used ONLY to match chosen competitors against listed names.
+// A trailing company suffix is dropped only if at least 2 words remain.
+export function competitorKey(name: string): string {
+  let words = normalize(name).split(" ").filter(Boolean)
+  if (words.length > 1 && words[0] === "the") words = words.slice(1)
+  while (words.length > 2 && COMPANY_SUFFIXES.has(words[words.length - 1])) {
+    words = words.slice(0, -1)
+  }
+  return words.map((w) => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w)).join(" ")
+}
+
+function competitorKeys(names: string[]): string[] {
+  const out = new Set<string>()
+  for (const n of names) {
+    const key = competitorKey(n)
+    if (key.length >= 2) out.add(key)
+  }
+  return [...out]
+}
+
 function normalizeNames(names: string[]): string[] {
   const out = new Set<string>()
   for (const n of names) {
@@ -74,12 +96,13 @@ export function classifyListed(
   competitorNames: string[],
 ): ClassifiedListed[] {
   const business = normalizeNames(businessNames)
-  const competitors = normalizeNames(competitorNames)
+  const competitors = competitorKeys(competitorNames)
   return listed.map((l) => {
     const p = pad(l.name)
+    const pc = ` ${competitorKey(l.name)} `
     const kind: ListedKind = business.some((n) => containsName(p, n))
       ? "client"
-      : competitors.some((n) => containsName(p, n))
+      : competitors.some((n) => containsName(pc, n))
         ? "chosen-competitor"
         : "other"
     return { ...l, kind }

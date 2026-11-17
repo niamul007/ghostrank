@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { normalize, findMention, extractListedNames, classifyListed } from "../src/scanner/matcher"
+import { normalize, findMention, extractListedNames, classifyListed, competitorKey } from "../src/scanner/matcher"
 
 const FIXTURE =
   "1. Bata Bangladesh — the oldest and most widespread brand, with shops nationwide\n" +
@@ -83,5 +83,59 @@ describe("classifyListed", () => {
     const out = classifyListed(listed, ["Apex Footwear"], ["Bata"])
     expect(out.map((l) => l.kind)).toEqual(["chosen-competitor", "client"])
     expect(classifyListed(listed, ["Nike"], ["Adidas"]).map((l) => l.kind)).toEqual(["other", "other"])
+  })
+})
+
+describe("competitorKey and competitor matching", () => {
+  const kind = (listedName: string, competitor: string) =>
+    classifyListed([{ position: 1, name: listedName }], ["Acme Shoes"], [competitor])[0].kind
+
+  it("builds a loose key", () => {
+    expect(competitorKey("The Thump Coffee")).toBe("thump coffee")
+    expect(competitorKey("Xo Coffee Co")).toBe("xo coffee")
+    expect(competitorKey("Lone Pine Coffee Roasters")).toBe("lone pine coffee roaster")
+    expect(competitorKey("Bus")).toBe("bus")
+  })
+
+  it("matches plural/singular competitor names", () => {
+    expect(kind("Lone Pine Coffee Roasters", "Lone Pine Coffee Roaster")).toBe("chosen-competitor")
+    expect(kind("Lone Pine Coffee Roaster", "Lone Pine Coffee Roasters")).toBe("chosen-competitor")
+  })
+
+  it("still matches identical names", () => {
+    expect(kind("Thump Coffee", "Thump Coffee")).toBe("chosen-competitor")
+  })
+
+  it("ignores a leading 'the' in both directions", () => {
+    expect(kind("The Xo", "Xo")).toBe("chosen-competitor")
+    expect(kind("Xo", "The Xo")).toBe("chosen-competitor")
+  })
+
+  it("ignores trailing company suffixes", () => {
+    expect(kind("Xo Coffee Co", "Xo Coffee")).toBe("chosen-competitor")
+    expect(kind("Xo Coffee", "Xo Coffee Inc")).toBe("chosen-competitor")
+  })
+
+  it("keeps a suffix when fewer than 2 words would remain", () => {
+    expect(competitorKey("Ghost Co")).toBe("ghost co")
+    expect(kind("Ghost Kitchen", "Ghost Co")).toBe("other")
+    expect(kind("Ghost Co", "Ghost Kitchen")).toBe("other")
+    expect(kind("Xo Coffee Co", "Xo Coffee")).toBe("chosen-competitor")
+  })
+
+  it("keeps the existing whole-word behaviour for partial names", () => {
+    // contained as whole words: matched before and after (unchanged)
+    expect(kind("Lone Pine Coffee Roasters", "Pine Coffee")).toBe("chosen-competitor")
+    // plural of a contained word now matches (new, via the singular key)
+    expect(kind("Lone Pines Coffee", "Pine Coffee")).toBe("chosen-competitor")
+    // partial word: not matched before or after (unchanged)
+    expect(kind("Pinecrest Coffee", "Pine Coffee")).toBe("other")
+  })
+
+  it("does not change how the client's own business is matched", () => {
+    const listed = [{ position: 1, name: "Lone Pine Coffee Roasters" }]
+    expect(classifyListed(listed, ["Lone Pine Coffee Roaster"], [])[0].kind).toBe("other")
+    expect(classifyListed(listed, ["Lone Pine Coffee Roasters"], [])[0].kind).toBe("client")
+    expect(findMention("1. Lone Pine Coffee Roasters", ["Lone Pine Coffee Roaster"]).mentioned).toBe(false)
   })
 })
